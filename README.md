@@ -1,4 +1,4 @@
 # Render
 
->Write React in the browser without the virtual DOM.
+>Write JSX and more in the browser without a virtual DOM.
 
