@@ -1,0 +1,54 @@
+{
+    "name": "@codingnninja/render",
+    "version": "0.0.4",
+    "description": "Write React in the browser without the virtual DOM",
+    "author": "Ayobami Ogundiran (ayobami_ogundiran@yahoo.com)",
+    "keywords": [
+       "React alternative",
+       "React in the browser",
+       "Server Component",
+       "Client Component",
+       "JSX in the browser"
+    ],
+    "license": "ISC",
+    "homepage": "https://github.com/codingnninja/render#readme",
+    "bugs": {
+      "url": "https://github.com/codingnninja/render/issues"
+    },
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/codingnninja/render.git"
+    },
+    "main": "dist/cjs/bundle.cjs",
+    "module": "dist/esm/bundle.js",
+    "browser": "dist/umd/bundle.js",
+    "type": "module",
+    "exports": {
+      ".": {
+        "import": "./dist/esm/bundle.js",
+        "require": "./dist/cjs/bundle.cjs"
+      }
+    },
+    "scripts": {
+      "clean": "rm -rf ./dist",
+      "test": "mocha",
+      "build": "npm run clean && rollup -c",
+      "dev": "npm run clean && rollup -c -w"
+    },
+    
+    "devDependencies": {
+      "@babel/core": "^7.20.12",
+      "@babel/preset-env": "^7.20.2",
+      "@rollup/plugin-babel": "^6.0.3",
+      "@rollup/plugin-commonjs": "^24.0.0",
+      "@rollup/plugin-node-resolve": "^15.0.1",
+      "@rollup/plugin-terser": "^0.3.0",
+      "chai": "^4.3.7",
+      "mocha": "^10.2.0",
+      "rollup": "^3.9.1"
+    },
+    "files": [
+      "dist"
+    ]
+  }
+  
