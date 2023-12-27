@@ -197,6 +197,26 @@ function normalizeHTML(str){
   );
 }
 
+function generateDivWithRandomId() {
+  const alpherNumericCharacters = 'abcdefghijklmnopqrstvwxyz';
+  const randomId = Array.from({length:12}, () => alpherNumericCharacters.charAt(Math.floor(Math.random() * alpherNumericCharacters.length))).join('');
+  const divString = `<div id="${randomId}"></div>`;
+  globalThis.$trackedDataFetcherkeys = globalThis.$trackedDataFetcherkeys || [];
+  globalThis.$trackedDataFetcherkeys.push(`#${randomId}`);
+  return divString;
+}
+
+function isPromise(value){
+  return Boolean(value && typeof value.then === "function");
+}
+
+function handlePromise(returnedValue){
+  if(isPromise(returnedValue)){
+    return generateDivWithRandomId();
+  }
+  return returnedValue;
+}
+
 const parseChildrenComponents = function(extensibleStr, currentElement){
   const line = currentElement;
   const regularMatch = line.match(/<([^\s<>]+) ?([^<>]*)>/);
@@ -209,14 +229,18 @@ const parseChildrenComponents = function(extensibleStr, currentElement){
     children: selfClosingMatch ? '' : '__placeholder'
   };
 
-  const component = normalizeHTML(callComponent(dependencies));
+  try {
+    const component = normalizeHTML(handlePromise(callComponent(dependencies)));
 
-  const indexOfCurrentElement = extensibleStr.indexOf(currentElement);
-  const result = component.split(/(<[^<>]+>)/);
+    const indexOfCurrentElement = extensibleStr.indexOf(currentElement);
+    const result = component.split(/(<[^<>]+>)/);
 
-  if(indexOfCurrentElement !== -1) {
-    extensibleStr.splice(indexOfCurrentElement, 1, ...result);
-    return extensibleStr;
+    if(indexOfCurrentElement !== -1) {
+      extensibleStr.splice(indexOfCurrentElement, 1, ...result);
+      return extensibleStr;
+    }
+  } catch(error){
+    throw(`${error}`);
   }
 };
 
@@ -271,25 +295,31 @@ function parseComponent (str) {
   if (!str) {
     return null;
   }
-  let extensibleStr = str.split(pattern);
-  const stack = [];
-  let depth = 0;
-  while (extensibleStr.length > depth ) {
-  const currentElement = extensibleStr[depth]
-  
-    if(currentElement.trim() === '') {
-      depth++
-      continue;
-    } 
-    if(isComponent(currentElement)){
-      extensibleStr = parseChildrenComponents(extensibleStr, currentElement);
-    } else {
-      stack.push(currentElement);
-      depth++;
-    }
-  }
 
-  return convertStackOfHTMLToString(stack);
+  try {
+    let extensibleStr = str.split(pattern);
+    const stack = [];
+    let depth = 0;
+    while (extensibleStr.length > depth ) {
+    const currentElement = extensibleStr[depth]
+    
+      if(currentElement.trim() === '') {
+        depth++
+        continue;
+      } 
+      if(isComponent(currentElement)){
+        extensibleStr = parseChildrenComponents(extensibleStr, currentElement);
+      } else {
+        stack.push(currentElement);
+        depth++;
+      }
+    }
+
+    return convertStackOfHTMLToString(stack);
+  } catch (error) {
+    throw(`${error}`);
+  }
+  
 };
  
 /**
@@ -299,6 +329,7 @@ function parseComponent (str) {
  */
 function getArgsLength(component) {
   // Extract the arguments using regex
+  
   const argsRegex = /function\s*\w*\s*\((.*?)\)|\((.*?)\)|\((.*?)\)\s*=>/;
   const match = component.match(argsRegex);
 
@@ -355,27 +386,31 @@ function resolveFunction(element){
  * @returns {function}
  */
 const callComponent = function(element) {
-  const component = resolveFunction(element);
-  const componentArgs = getArgsLength(component.toString());
+  try {
+    const component = resolveFunction(element);
+    const componentArgs = getArgsLength(component.toString());
 
-  const children = element.children;
-  let attributes = element.props;
-  const keys = Object.keys(attributes);
+    const children = element.children;
+    let attributes = element.props;
+    const keys = Object.keys(attributes);
 
-  if(componentArgs.length === 0) {
-    return component();
-  } else {
-    let prop = attributes[keys[0]];
-    if(Object.keys(attributes).length === 0) {
-      const convertedProp = convertStringToParams(componentArgs.args);
-      const key = Object.keys(convertedProp);
-      prop = convertedProp[key];
-    }
+    if(componentArgs.length === 0) {
+      return component();
+    } else {
+      let prop = attributes[keys[0]];
+      if(Object.keys(attributes).length === 0) {
+        const convertedProp = convertStringToParams(componentArgs.args);
+        const key = Object.keys(convertedProp);
+        prop = convertedProp[key];
+      }
 
-    attributes.children = children;
-    const finalProp = /\{\s*\w+\s*\}/.test(componentArgs.args) ? attributes : prop;
-    return component(finalProp);
-  } 
+      attributes.children = children;
+      const finalProp = /\{\s*\w+\s*\}/.test(componentArgs.args) ? attributes : prop;
+      return component(finalProp);
+    } 
+  } catch (error) {
+    throw(`${error}`);
+  }
 };
 
 /**
@@ -385,8 +420,12 @@ const callComponent = function(element) {
 */
  const processJSX = function (str) {
    let _str = str || '';
-   _str = normalizeHTML(_str);
-   return parseComponent(_str);
+   try {
+    _str = normalizeHTML(_str);
+    return parseComponent(_str);
+   } catch (error) {
+    throw(`${error}`);
+   }
  };
 
 export {processJSX}

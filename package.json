@@ -1,7 +1,7 @@
 {
     "name": "@codingnninja/render",
-    "version": "0.0.4",
-    "description": "Write React in the browser without the virtual DOM",
+    "version": "0.0.5",
+    "description": "Write React in the browser without a virtual DOM",
     "author": "Ayobami Ogundiran (ayobami_ogundiran@yahoo.com)",
     "keywords": [
        "React alternative",

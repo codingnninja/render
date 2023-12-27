@@ -1,7 +1,6 @@
 import { $render, $register, stringify, $select, $purify } from "../dist/esm/bundle.js";
 const audioURL = 'http://commondatastorage.googleapis.com/codeskulptor-demos/DDR_assets/Kangaroo_MusiQue_-_The_Neverwritten_Role_Playing_Game.mp3';
 
-
 const images = [
     {src:"https://flowbite.s3.amazonaws.com/docs/gallery/square/image-1.jpg", alt:"Ayoba_mope", mo:{y:[{o:'ayo'}]}, age:40},
     {src: "https://flowbite.s3.amazonaws.com/docs/gallery/square/image-2.jpg", alt:""},
@@ -59,11 +58,13 @@ const images = [
       return `
         <div id="app" style="color: #000;" class="hide">
           <Counter />
+          <Users />
           <Gallary> 
             <CurrentImage image=${stringify(images[0])} />
             <Pagination images=${stringify(images)} />
             <AudioPlayer audioUrl=${stringify(audioURL)} />
           </Gallary>
+          <Animal />
           <button onClick="$trigger(${memoize})">alert</button>
         </div>
       `;
@@ -139,8 +140,69 @@ const images = [
       <p id="audioStatus" class="text-center"></p>
     `;
   }
+
+    const Users = (options = {returnData: false}) => {
+      function View(users = []) {
+        return `
+          <div id="users" data-append="#list">
+            <h1>User list</h1>
+            <ul class="list" id="list">
+              ${users.results.map((user) => {
+                return `
+                    <li class="item">
+                      <img src="${user.picture.medium}">
+                      <p class="name">${user.name.first}</p>
+                    </li>
+                  `;
+              })}
+              </ul>
+              <button 
+                class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mb-5"
+                onClick="$render(Users, '${stringify(options)}')">Load more users...</button>
+          </div>
+        `;
+      }
+
+      const runModel = async (options) => {
+        const response = await fetch("https://randomuser.me/api?results=30");
+        const users = await response.json();
+        return options.returnData ? users : $render(View, users);
+      };
+      return runModel(options);
+    };
+
+  const Animal = (options = {returnData: false}) => {
+    function View(goats = []){
+      return `
+        <div id="animal" data-append="#animal-list">
+          <h1>User list</h1>
+          <ul class="list" id="animal-list">
+            ${goats.results.map((goat) => {
+              return `
+                <li class="item">
+                  <img src="${goat.picture.medium}">
+                  <p class="name">${goat.name.first}</p>
+                </li>
+              `;
+            })}
+          </ul>
+          <button 
+            class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mb-5"
+            onClick="$render(Animal, '${stringify(options)}')">Load more animal...</button>
+        </div>
+      `;
+    }
+
+    const runModel = async (options) => {
+      const goats = await Users({returnData:true});
+      return options.returnData ? goats : $render(View, goats);
+    };
+    return runModel(options);
+  };
   
   $register(
+    Users,
+    Animal,
     Counter, 
     Gallary, 
     Pagination, 

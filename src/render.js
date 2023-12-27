@@ -17,7 +17,7 @@ const isBrowser = (_) => {
       return false;
   }
   // Check if the environment is a Browser
-  if (typeof window === "object") {
+  if (typeof globalThis === "object") {
       return true;
   }
 }
@@ -27,20 +27,25 @@ function $select(str) {
   if (typeof str !== "string" || str === "") {
     throw ("$select expects a string of selectors");
   }
-  const selectors = str.split(",");
 
-  let elements = selectors.map((tagSelecoter) => {
-    const nestedElements = _$(tagSelecoter);
-    const numberOfElementsSelected = nestedElements.length;
-    if (numberOfElementsSelected > 1) {
-      //turn grouped elements to a real array
-      const iterableGroupedElements = [...nestedElements];
-      return iterableGroupedElements;
-    }
-    return nestedElements[0];
-  });
+  try {
+    const selectors = str.split(",");
+    let elements = selectors.map((tagSelecoter) => {
+      const nestedElements = _$(tagSelecoter);
+      const numberOfElementsSelected = nestedElements.length;
+      if (numberOfElementsSelected > 1) {
+        //turn grouped elements to a real array
+        const iterableGroupedElements = [...nestedElements];
+        return iterableGroupedElements;
+      }
+      return nestedElements[0];
+    });
+    
+    return elements.length === 1 ? elements[0] : elements;
+  } catch (error) {
+    throw(`${error}`);
+  }
   
-  return elements.length === 1 ? elements[0] : elements;
 }
 
 function isInitialLetterUppercase(func, context) {
@@ -62,12 +67,28 @@ function isInitialLetterUppercase(func, context) {
         throw('A component must start with a capital letter.')
       }
       if(isBrowser()){
-       return handleClientRendering(component, arg);
+        handleClientRendering(component, arg);
+        if(globalThis.$trackedDataFetchers){
+          const fetchers = globalThis.$trackedDataFetchers;
+          const fetcherKeys = globalThis.$trackedDataFetcherkeys;
+          const selectors = fetcherKeys.join(',');
+          const placeholders = document.querySelectorAll(selectors);
+          
+          fetchers.map((fetcher, index) => {
+            placeholders[index].parentNode.replaceChild(fetcher, placeholders[index]);
+          });
+          globalThis.$trackedDataFetchers = ""
+         }
+         return true;   
       }
       return processJSX(resolveComponent(component, arg));
     } catch (error) {
       throw(`${error} in ${component.name}()`);
     }
+  }
+
+  function isPromise(value){
+    return Boolean(value && typeof value.then === "function");
   }
 
  /**
@@ -78,12 +99,42 @@ function isInitialLetterUppercase(func, context) {
 function resolveComponent(component, arg){
   const resolvedArg = (typeof arg === 'function') ? arg : $purify(arg);
   const resolvedComponent = arg ? component(resolvedArg) : component();
+  
+  if(isPromise(resolvedComponent)){
+    return '<div id="ignore"></div>';
+  }
+
   if(typeof resolvedComponent !== 'string'){
     throw('A component must return a string');
   }
   return resolvedComponent;
 }
+function isFetcher(parsedComponent){
+  if(parsedComponent.dataset.append || parsedComponent.dataset.prepend){
+    return true;
+  }
+  return false;
+}
 
+function insertElementsIntoParent(parent, elements, parseComponent){
+  if(parent && elements){
+    const fragment = document.createDocumentFragment();
+    elements.forEach(element => {
+      if(element instanceof Node){
+        fragment.appendChild(element);
+      }
+    })
+
+    if(parseComponent.dataset.append){
+      parent.appendChild(fragment);
+    } else if(parseComponent.dataset.prepend) {
+      parent.prepend(fragment);
+    }
+
+  } else {
+    throw('invalid parameters, parent element and array of elements are expected');
+  }
+}
 /**
   * @desc renders client component
   * @param component func
@@ -105,9 +156,31 @@ function resolveComponent(component, arg){
     throw 'A reRenderable component wrapping div must have an ID';
   }
 
-  let el = $el(parsedComponent.id);
-  if (el) {
+  let el = $el(parsedComponent.id);//current component
+  if(parsedComponent.id === 'ignore'){
+    //ignore: do nothing (It is workaround to make sure data fetcher components don't throw error "string is expected" because they return promise instead. So we ignore the error and don't render anything)
+  } else if (el && !isFetcher(parsedComponent)) {
     el.parentNode.replaceChild(parsedComponent, el);
+  } else if(el && parsedComponent.dataset.append) {
+    if (!/^#/.test(parsedComponent.dataset.append)) {
+      throw("data-append value must start with #");
+    } 
+    const component = $select(`${parsedComponent.dataset.append}`);
+    const latestChildren = parsedComponent.querySelectorAll(`${parsedComponent.dataset.append}> *`);
+    insertElementsIntoParent(component, latestChildren, parsedComponent);
+
+  } else if(el && parsedComponent.dataset.prepend) {
+    
+    if (!/^#/.test(parsedComponent.dataset.prepend)) {
+      throw("data-prepend value must start with #");
+    } 
+    const component = $select(`${parsedComponent.dataset.prepend}`);
+    const latestChildren = parsedComponent.querySelectorAll(`${parsedComponent.dataset.prepend}> *`);
+    insertElementsIntoParent(component, latestChildren, parsedComponent);
+
+  } else if(!el && isFetcher(parsedComponent)) {
+    globalThis.$trackedDataFetchers = globalThis.$trackedDataFetchers || [];
+    globalThis.$trackedDataFetchers.push(parsedComponent);
   } else {
     useRoot(processedComponent);
   }
@@ -121,33 +194,41 @@ function resolveComponent(component, arg){
 function $register(...args) {
   const components = [...args];
   let depth = 0;
-  
-  while(components.length > depth){
-    const component = components[depth];
-    if(typeof component !== 'function') {
-      throw('Only function is expected');
+  try {
+    while(components.length > depth){
+      const component = components[depth];
+      if(typeof component !== 'function') {
+        throw('Only function is expected');
+      }
+      globalThis[component.name] = component;
+      depth++;
     }
-    window[component.name] = component;
-    depth++;
+    globalThis['$render'] = $render;
+    globalThis['$trigger'] = $trigger;
+    globalThis['$select'] = $select;
+    globalThis['$purify'] = $purify;
+    return true;
+  } catch (error) {
+    throw(`${error}`);
   }
-  window['$render'] = $render;
-  window['$trigger'] = $trigger;
-  window['$select'] = $select;
-  window['$purify'] = $purify;
-  return true;
 }
 
 function $trigger(func, anchors, data){
-  if(typeof func === 'function'){
-    if(!anchors && !data){
-      return func();
+
+  try {
+    if(typeof func === 'function'){
+      if(!anchors && !data){
+        return func();
+      }
+      if(!anchors && data){
+        return func($purify(data));
+      }
+      const elements = $select(anchors);
+      const result = !data ? func(elements) : func(elements, $purify(data));
+      return result;
     }
-    if(!anchors && data){
-      return func($purify(data));
-    }
-    const elements = $select(anchors);
-    const result = !data ? func(elements) : func(elements, $purify(data));
-    return result;
+  } catch (error) {
+    throw(`${error}`);
   }
 }
 function $el(elementId) {
