@@ -110,7 +110,9 @@ function resolveComponent(component, arg){
   return resolvedComponent;
 }
 function isFetcher(parsedComponent){
-  if(parsedComponent.dataset.append || parsedComponent.dataset.prepend){
+  if(parsedComponent.dataset.append ||
+     parsedComponent.dataset.prepend ||
+     parsedComponent.dataset.replace){
     return true;
   }
   return false;
@@ -134,6 +136,12 @@ function insertElementsIntoParent(parent, elements, parseComponent){
   } else {
     throw('invalid parameters, parent element and array of elements are expected');
   }
+}
+
+function stopIfNotStartWithHash(selector, insertionType){
+  if (!/^#/.test(selector)) {
+    throw(`${insertionType} value must start with #`);
+  } 
 }
 /**
   * @desc renders client component
@@ -161,19 +169,19 @@ function insertElementsIntoParent(parent, elements, parseComponent){
     //ignore: do nothing (It is workaround to make sure data fetcher components don't throw error "string is expected" because they return promise instead. So we ignore the error and don't render anything)
   } else if (el && !isFetcher(parsedComponent)) {
     el.parentNode.replaceChild(parsedComponent, el);
+    
+  } else if(el && parsedComponent.dataset.replace) {
+    stopIfNotStartWithHash(parsedComponent.dataset.replace, 'data.replace');
+    el.parentNode.replaceChild(parsedComponent, el);
+
   } else if(el && parsedComponent.dataset.append) {
-    if (!/^#/.test(parsedComponent.dataset.append)) {
-      throw("data-append value must start with #");
-    } 
+    stopIfNotStartWithHash(parsedComponent.dataset.append, 'data.append');
     const component = $select(`${parsedComponent.dataset.append}`);
     const latestChildren = parsedComponent.querySelectorAll(`${parsedComponent.dataset.append}> *`);
     insertElementsIntoParent(component, latestChildren, parsedComponent);
 
   } else if(el && parsedComponent.dataset.prepend) {
-    
-    if (!/^#/.test(parsedComponent.dataset.prepend)) {
-      throw("data-prepend value must start with #");
-    } 
+    stopIfNotStartWithHash(parsedComponent.dataset.append, 'data.prepend');
     const component = $select(`${parsedComponent.dataset.prepend}`);
     const latestChildren = parsedComponent.querySelectorAll(`${parsedComponent.dataset.prepend}> *`);
     insertElementsIntoParent(component, latestChildren, parsedComponent);

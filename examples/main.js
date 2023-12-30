@@ -1,5 +1,8 @@
 import { $render, $register, stringify, $select, $purify } from "../dist/esm/bundle.js";
-const audioURL = 'http://commondatastorage.googleapis.com/codeskulptor-demos/DDR_assets/Kangaroo_MusiQue_-_The_Neverwritten_Role_Playing_Game.mp3';
+
+// const { $render, $register, stringify, $select, $purify } = render;
+
+const audioURL = 'http://commondatastorage.googleapis.com/codeskulpt  or-demos/DDR_assets/Kangaroo_MusiQue_-_The_Neverwritten_Role_Playing_Game.mp3';
 
 const images = [
     {src:"https://flowbite.s3.amazonaws.com/docs/gallery/square/image-1.jpg", alt:"Ayoba_mope", mo:{y:[{o:'ayo'}]}, age:40},
@@ -62,8 +65,8 @@ const images = [
           <Gallary> 
             <CurrentImage image=${stringify(images[0])} />
             <Pagination images=${stringify(images)} />
-            <AudioPlayer audioUrl=${stringify(audioURL)} />
           </Gallary>
+          <AudioPlayer audioUrl=${stringify(audioURL)} />
           <Animal />
           <button onClick="$trigger(${memoize})">alert</button>
         </div>
@@ -128,9 +131,9 @@ const images = [
   }
 
   const setVolume = (elements => elements[0].volume = elements[1].value);
-  function AudioPlayer(audioUrl) {
+  function AudioPlayer(audioURL) {
     return  `
-      <audio src="${audioUrl}" id="myAudio"></audio>
+      <audio src="${audioURL}" id="myAudio"></audio>
       <button 
         onClick="$trigger(${play}, '#myAudio')" class="m-3">Play Audio </button> 
       <button 
@@ -144,8 +147,8 @@ const images = [
     const Users = (options = {returnData: false}) => {
       function View(users = []) {
         return `
-          <div id="users" data-append="#list">
-            <h1>User list</h1>
+          <div id="users" data-replace="#list">
+            <h1 class="text-3xl">User list</h1>
             <ul class="list" id="list">
               ${users.results.map((user) => {
                 return `
@@ -174,8 +177,8 @@ const images = [
   const Animal = (options = {returnData: false}) => {
     function View(goats = []){
       return `
-        <div id="animal" data-append="#animal-list">
-          <h1>User list</h1>
+        <div id="animal" data-replace="#animal-list">
+          <h1 class="text-3xl">Animal list</h1>
           <ul class="list" id="animal-list">
             ${goats.results.map((goat) => {
               return `
