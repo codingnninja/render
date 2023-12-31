@@ -22,8 +22,9 @@ const isBrowser = (_) => {
   }
 }
 
+let _$;
 if(typeof document !== 'undefined'){
-  const _$ = document.querySelectorAll.bind(document);
+   _$ = document.querySelectorAll.bind(document);
 }
 
 function $select(str) {
