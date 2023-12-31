@@ -22,7 +22,10 @@ const isBrowser = (_) => {
   }
 }
 
-const _$ = document.querySelectorAll.bind(document);
+if(typeof document !== 'undefined'){
+  const _$ = document.querySelectorAll.bind(document);
+}
+
 function $select(str) {
   if (typeof str !== "string" || str === "") {
     throw ("$select expects a string of selectors");
@@ -66,7 +69,7 @@ function isInitialLetterUppercase(func, context) {
       if(!isInitialLetterUppercase(component, '$render')){
         throw('A component must start with a capital letter.')
       }
-      if(isBrowser()){
+      if(isBrowser() && typeof document !== 'undefined'){
         handleClientRendering(component, arg);
         if(globalThis.$trackedDataFetchers){
           const fetchers = globalThis.$trackedDataFetchers;

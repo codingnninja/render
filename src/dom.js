@@ -199,7 +199,7 @@ function normalizeHTML(str){
 
 function generateDivWithRandomId() {
   const alpherNumericCharacters = 'abcdefghijklmnopqrstvwxyz';
-  const randomId = Array.from({length:12}, () => alpherNumericCharacters.charAt(Math.floor(Math.random() * alpherNumericCharacters.length))).join('');
+  const randomId = Array.from({length:18}, () => alpherNumericCharacters.charAt(Math.floor(Math.random() * alpherNumericCharacters.length))).join('');
   const divString = `<div id="${randomId}"></div>`;
   globalThis.$trackedDataFetcherkeys = globalThis.$trackedDataFetcherkeys || [];
   globalThis.$trackedDataFetcherkeys.push(`#${randomId}`);
