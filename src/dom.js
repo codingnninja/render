@@ -291,6 +291,7 @@ function convertStackOfHTMLToString(stack) {
 * @returns {*}
 */
 function parseComponent (str) {
+  //open tag matching pattern
   const pattern = /(<[^<>]+>)/;
   if (!str) {
     return null;
@@ -329,10 +330,8 @@ function parseComponent (str) {
  */
 function getArgsLength(component) {
   // Extract the arguments using regex
-  
   const argsRegex = /function\s*\w*\s*\((.*?)\)|\((.*?)\)|\((.*?)\)\s*=>/;
   const match = component.match(argsRegex);
-
   let args = [];
   if (match) {
     const argsString = match[1] || match[2];
