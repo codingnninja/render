@@ -16,5 +16,6 @@ We are always looking for contributors to take this framework to the next level 
 
 * Improve error handling for debugging.
 * Add more test infrastructures and suites.
-* Add tree-shaking
-* Move client components from the globalThis to a passwordScope
+* Add tree-shaking.
+* Move client components from the `globalThis` to a passwordScope.
+* Add `eslint` and its rules
