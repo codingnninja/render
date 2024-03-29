@@ -1,12 +1,26 @@
 import {processJSX} from './dom';
+import {replacer, 
+        reviver, 
+        formatKeyValuePairs,
+        checkForObjectString,
+        isObject,
+        sanitizeString,
+        normalizePropPlaceholderAndUtilInTrigger,
+        isPromise
+      } from './utils'
 
-  /**
-  * @desc Checking rendering environment
-  * @param void
-  * @returns boolean
-  */
+let _$;
+
+if(typeof document !== 'undefined'){
+   _$ = document.querySelectorAll.bind(document);
+}
+/**
+* @desc Checking rendering environment
+* @param void
+* @returns boolean
+*/
 const isBrowser = (_) => {
-  // Check if the environment is Node.js
+// Check if the environment is Node.js
   if (typeof process === "object" &&
       typeof require === "function") {
       return false;
@@ -21,37 +35,6 @@ const isBrowser = (_) => {
       return true;
   }
 }
-
-let _$;
-if(typeof document !== 'undefined'){
-   _$ = document.querySelectorAll.bind(document);
-}
-
-function $select(str) {
-  if (typeof str !== "string" || str === "") {
-    throw ("$select expects a string of selectors");
-  }
-
-  try {
-    const selectors = str.split(",");
-    let elements = selectors.map((tagSelecoter) => {
-      const nestedElements = _$(tagSelecoter);
-      const numberOfElementsSelected = nestedElements.length;
-      if (numberOfElementsSelected > 1) {
-        //turn grouped elements to a real array
-        const iterableGroupedElements = [...nestedElements];
-        return iterableGroupedElements;
-      }
-      return nestedElements[0];
-    });
-    
-    return elements.length === 1 ? elements[0] : elements;
-  } catch (error) {
-    throw(`${error}`);
-  }
-  
-}
-
 function isInitialLetterUppercase(func, context) {
   if(typeof func !== 'function') {
     throw(`Use ${context}(functionName, arg) instead of ${context}(funcationName(arg))`)
@@ -65,34 +48,21 @@ function isInitialLetterUppercase(func, context) {
   * @param component string
   * @returns string || void (mutates the DOM)
   */
-  function $render(component, arg) {
+  async function $render(component, props) {
+    const updatedComponent = makeFunctionFromString(component.toString());
     try {
       if(!isInitialLetterUppercase(component, '$render')){
         throw('A component must start with a capital letter.')
       }
       if(isBrowser() && typeof document !== 'undefined'){
-        handleClientRendering(component, arg);
-        if(globalThis.$trackedDataFetchers){
-          const fetchers = globalThis.$trackedDataFetchers;
-          const fetcherKeys = globalThis.$trackedDataFetcherkeys;
-          const selectors = fetcherKeys.join(',');
-          const placeholders = document.querySelectorAll(selectors);
-          
-          fetchers.map((fetcher, index) => {
-            placeholders[index].parentNode.replaceChild(fetcher, placeholders[index]);
-          });
-          globalThis.$trackedDataFetchers = ""
-         }
-         return true;   
+       return handleClientRendering(updatedComponent, props);
       }
-      return processJSX(resolveComponent(component, arg));
+      const resolvedComponent = await resolveComponent(updatedComponent, props)
+      const result = await processJSX(sanitizeOpeningTagAttributes(resolvedComponent));
+      return result;
     } catch (error) {
-      throw(`${error} in ${component.name}()`);
+      console.error(`${error} in ${component.name}()`);
     }
-  }
-
-  function isPromise(value){
-    return Boolean(value && typeof value.then === "function");
   }
 
  /**
@@ -100,18 +70,19 @@ function isInitialLetterUppercase(func, context) {
   * @param component:function, arg: any
   * @return 
   */
-function resolveComponent(component, arg){
-  const resolvedArg = (typeof arg === 'function') ? arg : $purify(arg);
-  const resolvedComponent = arg ? component(resolvedArg) : component();
+async function resolveComponent(component, arg){
+  const props = (typeof arg === 'function') ? arg : $purify(arg);
+  let resolvedComponent = arg ?  component(props) : component();
   
   if(isPromise(resolvedComponent)){
-    return '<div id="ignore"></div>';
+    const result = await resolvedComponent;
+    return result;
   }
 
   if(typeof resolvedComponent !== 'string'){
     throw('A component must return a string');
   }
-  return resolvedComponent;
+  return checkForObjectString(resolvedComponent);
 }
 function isFetcher(parsedComponent){
   if(parsedComponent.dataset.append ||
@@ -123,7 +94,7 @@ function isFetcher(parsedComponent){
 }
 
 function insertElementsIntoParent(parent, elements, parseComponent){
-  if(parent && elements){
+  if(parent && elements && isBrowser()){
     const fragment = document.createDocumentFragment();
     elements.forEach(element => {
       if(element instanceof Node){
@@ -138,25 +109,49 @@ function insertElementsIntoParent(parent, elements, parseComponent){
     }
 
   } else {
-    throw('invalid parameters, parent element and array of elements are expected');
+    console.error('Invalid parameters. Parent element and array of elements are expected');
   }
 }
 
 function stopIfNotStartWithHash(selector, insertionType){
   if (!/^#/.test(selector)) {
-    throw(`${insertionType} value must start with #`);
+    console.error(`${insertionType} value must start with #`);
   } 
 }
+
+function sanitizeOpeningTagAttributes(tag) {
+  const regex = /(\w+)=("[^"]*"|'[^']*')/g;
+    return tag.replace(regex, (match, attributeName, attributeValue) => {
+      const sanitizedValue = attributeValue
+                             .replace(/</g, '&lt;')
+                             .replace(/>/g, '&gt;');
+      return `${attributeName}=${sanitizedValue}`;
+  });
+}
+function deSanitizeOpeningTagAttributes(tag) {
+  const regex = /(\w+)=("[^"]*"|'[^']*')/g;
+    return tag.replace(regex, (match, attributeName, attributeValue) => {
+      const sanitizedValue = attributeValue
+                             .replace(/&lt;/g, '<')
+                             .replace(/&gt;/g, '>');
+      return `${attributeName}=${sanitizedValue}`;
+  });
+}
+
 /**
   * @desc renders client component
   * @param component func
   * @param arg any
   * @returns void (mutates the DOM)
   */
- function handleClientRendering(component, arg){
+ async function handleClientRendering(component, arg){
+
   const parser = new DOMParser();
-  const resolvedComponent = resolveComponent(component, arg);
-  let processedComponent = processJSX(resolvedComponent);  
+  const resolvedComponent = await resolveComponent(component, arg);
+  let processedComponent = await processJSX(
+    sanitizeOpeningTagAttributes(resolvedComponent)
+  );  
+
   const componentEl = parser.parseFromString(processedComponent, "text/html");
   const parsedComponent = componentEl.querySelector("body > div");
   
@@ -169,11 +164,8 @@ function stopIfNotStartWithHash(selector, insertionType){
   }
 
   let el = $el(parsedComponent.id);//current component
-  if(parsedComponent.id === 'ignore'){
-    //ignore: do nothing (It is workaround to make sure data fetcher components don't throw error "string is expected" because they return promise instead. So we ignore the error and don't render anything)
-  } else if (el && !isFetcher(parsedComponent)) {
+  if (el && !isFetcher(parsedComponent)) {
     el.parentNode.replaceChild(parsedComponent, el);
-    
   } else if(el && parsedComponent.dataset.replace) {
     stopIfNotStartWithHash(parsedComponent.dataset.replace, 'data.replace');
     el.parentNode.replaceChild(parsedComponent, el);
@@ -190,12 +182,30 @@ function stopIfNotStartWithHash(selector, insertionType){
     const latestChildren = parsedComponent.querySelectorAll(`${parsedComponent.dataset.prepend}> *`);
     insertElementsIntoParent(component, latestChildren, parsedComponent);
 
-  } else if(!el && isFetcher(parsedComponent)) {
-    globalThis.$trackedDataFetchers = globalThis.$trackedDataFetchers || [];
-    globalThis.$trackedDataFetchers.push(parsedComponent);
   } else {
     useRoot(processedComponent);
   }
+  return processedComponent;
+}
+
+
+function makeFunctionFromString(functionString){
+  return Function(`return ${replaceValueWithStringify(functionString)}`)();
+}
+
+function replaceValueWithStringify(functionString) {
+  let func = formatKeyValuePairs(functionString);
+  func = func.replace(/(\w+)=["']?\{([^'$][^{}]+)\}["']?/g
+  , (match, key, value) => {
+      return key + "=" + "${stringify(" + value + ")}";     
+  });
+
+  // Todo: Make the argument optional
+  func = func.replace(/(\w+)="\$render\(([^{}]+)\, \{([^{}]+)\}\)"/g, (match, key, component, prop) => {
+    return key + '="' + '$render(' + component + ',' + "'${stringify(" + prop + ")}')" + '"';  
+  });
+  return normalizePropPlaceholderAndUtilInTrigger(func);
+  ;
 }
 
  /**
@@ -206,27 +216,19 @@ function stopIfNotStartWithHash(selector, insertionType){
 function $register(...args) {
   const components = [...args];
   let depth = 0;
-  try {
-    while(components.length > depth){
-      const component = components[depth];
-      if(typeof component !== 'function') {
-        throw('Only function is expected');
-      }
-      globalThis[component.name] = component;
-      depth++;
+  
+  while(components.length > depth){
+    const component = components[depth];
+    if(typeof component !== 'function') {
+      throw('Only function is expected');
     }
-    globalThis['$render'] = $render;
-    globalThis['$trigger'] = $trigger;
-    globalThis['$select'] = $select;
-    globalThis['$purify'] = $purify;
-    return true;
-  } catch (error) {
-    throw(`${error}`);
+    globalThis[component.name] = component;
+    depth++;
   }
+  return globalThis;
 }
 
 function $trigger(func, anchors, data){
-
   try {
     if(typeof func === 'function'){
       if(!anchors && !data){
@@ -239,8 +241,9 @@ function $trigger(func, anchors, data){
       const result = !data ? func(elements) : func(elements, $purify(data));
       return result;
     }
+    throw(`There is an error in ${func.name ?? func}`)
   } catch (error) {
-    throw(`${error}`);
+    console.error(`${error} but ${func.name ? `${typeof func.name}` : typeof func} is provided in ${func.name ?? func}`);
   }
 }
 function $el(elementId) {
@@ -248,41 +251,30 @@ function $el(elementId) {
 }
 
 function useRoot(component) {
-  document.getElementById("root").innerHTML = component;
+  $el("root").innerHTML = component;
 }
 
-function stringify(arrOrObj) {
+function stringify(arrOrObj){
   try {
-    if(!arrOrObj && !Array.isArray(arrOrObj)) {
-      return arrOrObj;
-    }
-    const data = JSON.stringify(arrOrObj);
-    const sanitizedString = data
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#x27;')
-      .replace(/\//g, '&#x2F;');
+    const data = JSON.stringify(arrOrObj, replacer);
+    const sanitizedString = sanitizeString(data);
     return `_9s35Ufa7M67wghwT_${sanitizedString}_9s35Ufa7M67wghwT_`;
   } catch (error) {
-    throw(`${error}`)
+    console.error(error);
   }
 }
-
 function convertToPropSystem(str){
-  const regex = /_9s35Ufa7M67wghwT_([^]*?)_9s35Ufa7M67wghwT_/g;
+  const regex = /([`"']?)(_9s35Ufa7M67wghwT_([^]*?)_9s35Ufa7M67wghwT_)\1/g
   let match = regex.exec(str);
   if(match) {
     try {
-      const parsedJSON = JSON.parse(match[1]);
+      const parsedJSON = JSON.parse(match[3], reviver);
       return parsedJSON;
     } catch (error) {
-      // If parsing fails due to a SyntaxError, handle the error here
       console.error("Parsing Error:", error);
     }
   }
-  return JSON.parse(str);
+  return JSON.parse(str, reviver);
 }
 
 function $purify(props){
@@ -299,21 +291,151 @@ function $purify(props){
     }
     return convertToPropSystem(props);
   } catch (error) {
-    throw(`Encountered an error: ${error}`)
+    console.error(error)
   }
 }
 
-function isObject(value){
-  return (
-    typeof value === "object" && value !== null && !Array.isArray(value)
-  );
-};
+function buildDataStructureFrom(queryString){  
+  let [selector, constraints] = queryString.split('[').filter(Boolean);
+
+  if(selector && selector.endsWith(']')){
+    selector = selector.slice(0, -1)
+  }
+  if(constraints && constraints.endsWith(']')){
+    constraints = constraints.slice(0, -1)
+  }
+  
+  if(constraints && !constraints.includes("|")){ 
+    return constraints.includes('=') ? [queryString, undefined] : [selector, constraints]; 
+  }
+
+  if(constraints && constraints.includes('|=')) return [queryString, undefined];
+
+  if(constraints === undefined){
+    return [selector];
+  }
+
+  constraints = constraints.split('|');
+  let params = constraints[1].split(/(\w+)(>=?|<=?|={1,2})(\w+|"")/).filter(Boolean);
+  constraints = [constraints[0], params]
+  return [selector, constraints];
+}
+ 
+function $select(str, offSuperpowers = false) {
+  if (typeof str !== "string" || str === "") {
+    throw ("$select expects a string of selectors");
+  }
+
+  try {
+    const selectors = str.split(",");
+    let elements = [];
+    let depth = 0;
+    
+    while(selectors.length > depth){
+      const selectorWithConstraints = selectors[depth];
+      const [selector, constraints] = buildDataStructureFrom(selectorWithConstraints);
+
+      const nestedElements = _$(selector);
+      const modifiedElements = applyAction(nestedElements, constraints);
+
+      const numberOfElementsSelected = modifiedElements === undefined ? undefined : modifiedElements.length;
+      if (numberOfElementsSelected && !offSuperpowers) {
+        //turn grouped elements to a real array
+        const iterableGroupedElements = [...modifiedElements];
+        elements.push(iterableGroupedElements);
+      } else if (numberOfElementsSelected > 1 && offSuperpowers) {
+        elements.push(modifiedElements);
+      } else {
+        elements.push(modifiedElements);
+      } 
+      depth++
+    }
+
+    return elements.length === 1 ? elements[0] : elements;
+  } catch (error) {
+    console.error(`${error}. You can\'t use $select on the server or check the selector(s) '${str}' provided for validity`);
+  }
+
+}
+
+function applyAction(elements, constraints) {
+  let action;
+  if (Array.isArray(constraints)) {
+    [action] = constraints;
+  }
+  if (typeof constraints === 'string' && elements) return elements[constraints];
+  if (!constraints && elements.length === 1) return elements[0];
+  if (!constraints && elements.length > 1) return elements;
+  if (action === 'delete') {
+    return del(elements, constraints);
+  } else if(constraints !== undefined){
+    return setAttribute(elements, constraints);
+  }
+}
+
+const operators = {
+  '>': (key, element, value) => element.getAttribute(key) > value,
+  '<': (key, element, value) => element.getAttribute(key) < value,
+  '=': (key, element, value) => element.getAttribute(key) === value,
+  '<=': (key, element, value) => element.getAttribute(key) <= value,
+  '>=': (key, element, value) => element.getAttribute(key) >= value,
+  '!=': (key, element, value) => element.getAttribute(key) !== value,
+}
+
+function del(elements, constraints) {
+  const [action, params] = constraints;
+  const [key, operator, value] = params;
+  const result = []
+
+  for (let index = 0; index < elements.length; index++) {
+    if ((key === 'i' || 'index') && index == value) {
+      elements[value].remove();
+      result.push(elements[value]);
+      continue;
+    }
+
+    if (operators[operator](key, elements[index], value)) {
+      elements[index].remove();
+      result.push(elements[index]);
+      continue;
+    }
+    console.log('the selector and constraints you provided do not match any target')
+  }
+  return result.length === 1 ? result[0] : result;
+}
+
+function setAttribute(elements, constraints) {
+  const [action, params] = constraints;
+  const [key, operator, value] = params;
+
+  for (let i = 0; i < elements.length; i++) {
+    if (key === 'class') {
+      elements[i].classList[action](value);
+      continue
+    }   
+    elements[i].setAttribute(key, value);
+  }
+  return elements;
+}
+
+function registerInternalUtils(){
+  globalThis['$render'] = $render;
+  globalThis['stringify'] = stringify;
+  globalThis['$trigger'] = $trigger;
+  globalThis['$select'] = $select;
+  globalThis['$purify'] = $purify;
+}
+
+registerInternalUtils();
 
 export {
   $render,
   $register,
+  $select,
   stringify,
   $trigger,
-  $select,
-  $purify
+  $purify,
+  makeFunctionFromString,
+  sanitizeOpeningTagAttributes,
+  deSanitizeOpeningTagAttributes
 }

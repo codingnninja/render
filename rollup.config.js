@@ -8,8 +8,7 @@ export default [
   {
     input:'src/index.js',
     output: [
-      { name: 'render', file: pkg.browser, format: 'umd'},
-      { file: pkg.module, format: 'es' },
+      { name: 'render', file: pkg.module, format: 'es' },
     ],
     plugins: [
       terser(),

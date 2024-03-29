@@ -1,3 +1,14 @@
+import { 
+  sanitizeOpeningTagAttributes, 
+  deSanitizeOpeningTagAttributes,
+  makeFunctionFromString 
+} from "./render";
+import { 
+  reviver, 
+  checkForObjectString, 
+  isPromise, 
+  deSanitizeString } from "./utils";
+
 const CONSTANT = {
   cap: 'cap',
   isFirstLetterCapped: 'isFirstLetterCapped',
@@ -89,29 +100,32 @@ const CONSTANT = {
     element: 'element',
   };
  
+ 
 /**
  * converts attributes to props
  * @param str
- * Todo: This should be made better by a properly proper parsing 
+ * Todo: This should be made better with a proper parsing 
  * @returns {{}}
  */
 
  function convertAttributesToProps(str){
-  const regex = /([\S]+=_9s35Ufa7M67wghwT_([^]*?)_9s35Ufa7M67wghwT_)/g;
+  const regexToMatchProps = /([\S]+=([`"']?)(_9s35Ufa7M67wghwT_([^]*?)_9s35Ufa7M67wghwT_)\1)/g;
   const matches = {};
   let match;
 
-  while ((match = regex.exec(str)) !== null) {
-    const extractedContent = match[1].match(/([^=]+)=([^]*)/);
-    const value = extractedContent[2].match(/_9s35Ufa7M67wghwT_([^]*?)_9s35Ufa7M67wghwT_/);
-    try {
-      const parsedJSON = JSON.parse(value[1]);
+  try {
+    while ((match = regexToMatchProps.exec(str)) !== null) {
+      const extractedContent = match[1].match(/([^=]+)=([^]*)/);
+      const value = extractedContent[2].match(/([`"']?)(_9s35Ufa7M67wghwT_([^]*?)_9s35Ufa7M67wghwT_)\1/);
+    
+      const parsedJSON = JSON.parse(value[3], reviver);
       matches[extractedContent[1]] = parsedJSON;
-    } catch (error) {
-      // If parsing fails due to a SyntaxError, handle the error here
-      console.error("Parsing Error:", error);
     }
+  } catch (error) {
+    // If parsing fails due to a SyntaxError, handle the error here
+    console.error("Parsing Error:", error);
   }
+
   return matches;
 }
 
@@ -142,8 +156,8 @@ function normalizeNumberOrBoolean(paramValue){
   }
   const extractedNonStructuredDataType = {}
   const extractedObjectAndArray = convertAttributesToProps(str);
-
-  const _str = str.replace(/([\S]+=_9s35Ufa7M67wghwT_([^]*?)_9s35Ufa7M67wghwT_)/g, ' ');
+  const regexToMatchProps = /([\S]+=([`"']?)(_9s35Ufa7M67wghwT_([^]*?)_9s35Ufa7M67wghwT_)\1)/g;
+  const _str = str.replace(regexToMatchProps, ' ');
   const arr = _str.replace(/[\s]+/g, ' ').trim().match(/([\S]+="[^"]*")|([^\s"]+)/g);
 
   arr.forEach((item) => {
@@ -160,11 +174,11 @@ function normalizeNumberOrBoolean(paramValue){
       extractedNonStructuredDataType[match[1]] = normalizeNumberOrBoolean(paramValue);
     }
   });
-
   const props = {
     ...extractedObjectAndArray, 
     ...extractedNonStructuredDataType
   }; 
+
   return props;
 }
 
@@ -197,40 +211,22 @@ function normalizeHTML(str){
   );
 }
 
-function generateDivWithRandomId() {
-  const alpherNumericCharacters = 'abcdefghijklmnopqrstvwxyz';
-  const randomId = Array.from({length:18}, () => alpherNumericCharacters.charAt(Math.floor(Math.random() * alpherNumericCharacters.length))).join('');
-  const divString = `<div id="${randomId}"></div>`;
-  globalThis.$trackedDataFetcherkeys = globalThis.$trackedDataFetcherkeys || [];
-  globalThis.$trackedDataFetcherkeys.push(`#${randomId}`);
-  return divString;
-}
-
-function isPromise(value){
-  return Boolean(value && typeof value.then === "function");
-}
-
-function handlePromise(returnedValue){
-  if(isPromise(returnedValue)){
-    return generateDivWithRandomId();
-  }
-  return returnedValue;
-}
-
-const parseChildrenComponents = function(extensibleStr, currentElement){
+const parseChildrenComponents = async function(extensibleStr, currentElement){
+  
   const line = currentElement;
   const regularMatch = line.match(/<([^\s<>]+) ?([^<>]*)>/);
   const selfClosingMatch = line.match(/<([^\s<>]+) ?([^<>]*)\/>/);
-
+  
   const node = regularMatch ? regularMatch : selfClosingMatch;
   const dependencies = {
     tagName: node[1], 
-    props: convertAttributes(sanitizedString(node[2])), 
+    props: convertAttributes(deSanitizeString(node[2])), 
     children: selfClosingMatch ? '' : '__placeholder'
   };
 
   try {
-    const component = normalizeHTML(handlePromise(callComponent(dependencies)));
+    let calledComponent = await callComponent(dependencies);
+    const component = normalizeHTML(sanitizeOpeningTagAttributes(calledComponent));
 
     const indexOfCurrentElement = extensibleStr.indexOf(currentElement);
     const result = component.split(/(<[^<>]+>)/);
@@ -240,7 +236,7 @@ const parseChildrenComponents = function(extensibleStr, currentElement){
       return extensibleStr;
     }
   } catch(error){
-    throw(`${error}`);
+    console.error(error);
   }
 };
 
@@ -249,15 +245,6 @@ const parseChildrenComponents = function(extensibleStr, currentElement){
  * @param str
  * @returns {string | * | void}
  */
-function sanitizedString(str) {
-  const _str = str.replace(/&amp;/g, '&')
-     .replace(/&lt;/g, '<')
-     .replace(/&gt;/g, '>')
-     .replace(/&quot;/g, '"')
-     .replace(/&#x27;/g, "'")
-     .replace(/&#x2F;/g, '\/');
-  return _str;
-}
 
 function convertStackOfHTMLToString(stack) {
   let html = ``;
@@ -290,8 +277,8 @@ function convertStackOfHTMLToString(stack) {
 * @param str
 * @returns {*}
 */
-function parseComponent (str) {
-  //open tag matching pattern
+async function parseComponent (str) {
+  //open tag matching pattern 
   const pattern = /(<[^<>]+>)/;
   if (!str) {
     return null;
@@ -303,65 +290,24 @@ function parseComponent (str) {
     let depth = 0;
     while (extensibleStr.length > depth ) {
     const currentElement = extensibleStr[depth]
-    
       if(currentElement.trim() === '') {
         depth++
         continue;
       } 
       if(isComponent(currentElement)){
-        extensibleStr = parseChildrenComponents(extensibleStr, currentElement);
+        extensibleStr = await parseChildrenComponents(extensibleStr, currentElement);
       } else {
-        stack.push(currentElement);
+        stack.push(deSanitizeOpeningTagAttributes(currentElement));
         depth++;
       }
     }
 
     return convertStackOfHTMLToString(stack);
   } catch (error) {
-    throw(`${error}`);
+    console.error(error);
   }
   
 };
- 
-/**
- * figures argument length of a function
- * @param function
- * @returns {obj}
- */
-function getArgsLength(component) {
-  // Extract the arguments using regex
-  const argsRegex = /function\s*\w*\s*\((.*?)\)|\((.*?)\)|\((.*?)\)\s*=>/;
-  const match = component.match(argsRegex);
-  let args = [];
-  if (match) {
-    const argsString = match[1] || match[2];
-    if(match[1] === "") { return {length: 0}};
-    args = argsString.split(',').map(arg => arg.trim());
-  }
-
-  if (args.length === 1) {
-    return {length: 1, args}
-  }
-  return {length: args.length, args};
-}
-
-/**
- * string to parameters
- * @param str
- * @returns {obj}
- */
-function convertStringToParams(string) {
-  const regex = /(\w+)\s*=\s*(.*?)(?=\s*(?:,|$))/g;
-  const parameterObj = {};
-
-  let matches;
-  while ((matches = regex.exec(string)) !== null) {
-    const paramName = matches[1].trim();
-    let paramValue = normalizeNumberOrBoolean(matches[2].trim());
-    parameterObj[paramName] = paramValue;
-  }
-  return parameterObj;
-}
 
 /**
  * convert tag string to a function equivalent with a tag name
@@ -369,9 +315,8 @@ function convertStringToParams(string) {
  * @returns {function}
  */
 
-function resolveFunction(element){
-  const fn = Function(`return ${element.tagName}`)(); 
-
+ function resolveFunction(tagName){
+  const fn = Function(`return ${tagName}`)(); 
   if (typeof fn !== "function") {
     throw TypeError('This component is not defined');
   }
@@ -384,31 +329,32 @@ function resolveFunction(element){
  * @param str
  * @returns {function}
  */
-const callComponent = function(element) {
+async function callComponent(element) {
+  
   try {
-    const component = resolveFunction(element);
-    const componentArgs = getArgsLength(component.toString());
-
+    const component = globalThis[element.tagName];
+    const modifiedComponent = makeFunctionFromString(component.toString());
     const children = element.children;
-    let attributes = element.props;
-    const keys = Object.keys(attributes);
-
-    if(componentArgs.length === 0) {
-      return component();
+    let props = element.props;
+    if(Object.keys(props).length === 0 && !element.children) {
+      return checkForObjectString(modifiedComponent());
     } else {
-      let prop = attributes[keys[0]];
-      if(Object.keys(attributes).length === 0) {
-        const convertedProp = convertStringToParams(componentArgs.args);
-        const key = Object.keys(convertedProp);
-        prop = convertedProp[key];
+     /*  if(isObject(props) && 
+         isObject(props[Object.keys(props)[0]]) &&
+         Object.keys(props).length === 1){
+          props = props[Object.keys(props)[0]];
+      } */
+
+      if(element.children){
+        props.children = children;
       }
 
-      attributes.children = children;
-      const finalProp = /\{\s*\w+\s*\}/.test(componentArgs.args) ? attributes : prop;
-      return component(finalProp);
+      const calledComponent = checkForObjectString(modifiedComponent(props));
+      const resolvedComponent = isPromise(calledComponent) ? await calledComponent : calledComponent;
+      return resolvedComponent;
     } 
   } catch (error) {
-    throw(`${error}`);
+    console.error(`${error} in ${element.tagName}`);
   }
 };
 
@@ -417,13 +363,14 @@ const callComponent = function(element) {
 * @param str
 * @constructor
 */
- const processJSX = function (str) {
+ const processJSX = async function (str) {
    let _str = str || '';
    try {
     _str = normalizeHTML(_str);
-    return parseComponent(_str);
+    const a = await parseComponent(_str);
+    return a;
    } catch (error) {
-    throw(`${error}`);
+    console.error(error);
    }
  };
 
