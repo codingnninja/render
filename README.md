@@ -18,4 +18,4 @@ We are always looking for contributors to take this framework to the next level 
 * Add more test infrastructures and suites.
 * Add tree-shaking.
 * Move client components from the `globalThis` to a passwordScope.
-* Add `eslint` and its rules
+* Add `eslint` and its rules.

@@ -3,12 +3,12 @@ layout: home
 
 # Hero section
 hero:
-  name: Adocs
-  text: Static docs template built with VitePress.
+  name: $render.jsx
+  text: Use no-build JSX in browsers and servers
   image:
     src: /logo-big.svg
     alt: Adocs logo
-  tagline: A free to use template for creating docs for your projects
+  tagline: $render makes no-build JSX possible in browsers and servers without a virtual DOM or tagged template.
   actions:
     - theme: brand
       text: Get Started

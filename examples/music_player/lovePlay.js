@@ -1,41 +1,41 @@
 'use strict'
 
-import { $render, $register, stringify, $select, $purify } from "../../dist/esm/render.min.js";
+import { $render, $register, stringify, $select, $purify } from "https://cdn.jsdelivr.net/npm/@codingnninja/render/dist/esm/render.min.js";
 let playingInterval;
 
 /**All music information */
 const songs = [
-    {
-      id:1,
-      backgroundImage: "./images/background.jpg",
-      posterUrl: "./images/calm-down.png",
-      title: "Calm Down",
-      album: "Audio",
-      year: 2023,
-      artist: "Rema ft Gomez",
-      musicPath: "./music/local-music-2.mp3",
-    },
-    {
-      id:2,
-      backgroundImage: "./images/background.jpg",
-      posterUrl: "./images/lonely-at-the-top.jpg",
-      title: "Lonely at the top ",
-      album: "Audio",
-      year: 2023,
-      artist: "Asake",
-      musicPath: "./music/local-music-1.mp3",
-    },
-    {
-      id:3,
-      backgroundImage: "./images/local-poster-3.jpg",
-      posterUrl: "./images/unavailable.jpg",
-      title: "Unavailable",
-      album: "Audio",
-      year: 2023,
-      artist: "Davido ft Musa",
-      musicPath: "./music/local-music-3.mp3",
-    }
-  ];
+  {
+    id:1,
+    backgroundImage: "./images/background.jpg",
+    posterUrl: "./images/calm-down.png",
+    title: "Calm Down",
+    album: "Audio",
+    year: 2023,
+    artist: "Rema ft Gomez",
+    musicPath: "./music/local-music-2.mp3",
+  },
+  {
+    id:2,
+    backgroundImage: "./images/background.jpg",
+    posterUrl: "./images/lonely-at-the-top.jpg",
+    title: "Lonely at the top ",
+    album: "Audio",
+    year: 2023,
+    artist: "Asake",
+    musicPath: "./music/local-music-1.mp3",
+  },
+  {
+    id:3,
+    backgroundImage: "./images/local-poster-3.jpg",
+    posterUrl: "./images/unavailable.jpg",
+    title: "Unavailable",
+    album: "Audio",
+    year: 2023,
+    artist: "Davido ft Musa",
+    musicPath: "./music/local-music-3.mp3",
+  }
+];
   
   const getSong = async (index) => {
     let song;
@@ -491,7 +491,7 @@ const Songs = ({songs}) => {
     <div class="music-list" id="music-list">
       <div 
         style="border: 1px solid silver; text-align:center; border-radius: 8px"
-        onclick="$trigger(downloadAll)"
+        onclick="$trigger(${downloadAll})"
       >
         <span class="material-symbols-rounded active">download</span> all
       </div>
@@ -500,24 +500,24 @@ const Songs = ({songs}) => {
     </div>`;
 }
 
-const Header = ({toggle}) => {
-  return `
-    <div class="top-bar wrapper">
-      <!--navbar-->
-      <div class="logo wrapper">
-        <h1 class="title-lg">LovePlay</h1>
-      </div>
-      <!--music list-->
-      <div class="top-bar-actions">
-        <button class="btn-icon" onclick="$trigger(toggle)">
-          <span class="material-symbols-rounded">filter_list</span>
-        </button>
-      </div>
-    </div>
-  `;
+const debounce = (func, timeout=300) => {
+  let timer;
+  return (...args) => {
+    clearTimeout(timeout);
+    const deferred = () => {
+      timer = null;
+      func(...args);
+    };
+    timer && clearTimeout(timer);
+    timer = setTimeout(deferred, timeout);
+  }
 }
-const App = ({songs}) => {
-  const toggle = (event) => {
+
+
+const toggle = event => {
+  let timer;
+  let timeout=30;
+  function toggleDefination(event){
     event && event.preventDefault();
     const [playlist, overlay] = $select('#playlist, .overlay');
     if(playlist.classList.contains('active')){
@@ -527,8 +527,35 @@ const App = ({songs}) => {
       playlist.classList.add('active');
       overlay.classList.add('active');
     }
+  }
+
+  clearTimeout(timeout);
+  const deferred = () => {
+    timer = null;
+    toggleDefination(event);
   };
-  
+  timer && clearTimeout(timer);
+  timer = setTimeout(deferred, timeout); 
+}
+
+const Header = ({toggle}) => {
+  console.log(toggle);
+  return `
+    <div class="top-bar wrapper">
+      <!--navbar-->
+      <div class="logo wrapper">
+        <h1 class="title-lg">LovePlay</h1>
+      </div>
+      <!--music list-->
+      <div class="top-bar-actions">
+        <button class="btn-icon" onclick="$trigger(${toggle})">
+          <span class="material-symbols-rounded">filter_list</span>
+        </button>
+      </div>
+    </div>
+  `;
+}
+const App = ({songs, toggle}) => {
   return `
     <div id="main">
       <Header toggle=${toggle} />
@@ -549,5 +576,118 @@ $register(
 
 globalThis['appState'] = appState;
 
-const a = await $render(App, {songs});
+const a = await $render(App, {songs, toggle});
 console.log(a);
+
+
+if(/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)){
+    
+  // Swiping implementation
+  let [touchArea, overlay] = $select("#player, #overlay");
+
+  const doNothing = () => {
+  return;
+  }
+
+  const handlePrevious = debounce(() => {
+    let previousComponent = $select("#previous>button>span");
+    previousComponent.click();
+  });
+
+  const handleNext = debounce (() => {
+    let nextComponent = $select("#next>button>span");
+    nextComponent.click();
+  });
+  //Initial mouse X and Y positions are 0
+
+  let mouseX,
+  initialX = 0;
+  let mouseY,
+  initialY = 0;
+  let isSwiped;
+
+  //Events for touch and mouse
+  let events = {
+  mouse: {
+    down: "mousedown",
+    move: "mousemove",
+    up: "mouseup",
+  },
+  touch: {
+    down: "touchstart",
+    move: "touchmove",
+    up: "touchend",
+  },
+  };
+
+  let deviceType = "";
+
+  //Detect touch device
+
+  const isTouchDevice = () => {
+  try {
+    //We try to create TouchEvent (it would fail for desktops and throw error)
+    document.createEvent("TouchEvent");
+    deviceType = "touch";
+    return true;
+  } catch (e) {
+    deviceType = "mouse";
+    return false;
+  }
+  };
+
+  //Get left and top of touchArea
+  let rectLeft = touchArea.getBoundingClientRect().left;
+  let rectTop = touchArea.getBoundingClientRect().top;
+
+  //Get Exact X and Y position of mouse/touch
+  const getXY = (e) => {
+  mouseX = (!isTouchDevice() ? e.pageX : e.touches[0].pageX) - rectLeft;
+  mouseY = (!isTouchDevice() ? e.pageY : e.touches[0].pageY) - rectTop;
+  };
+
+  isTouchDevice();
+
+  //Start Swipe
+  touchArea.addEventListener(events[deviceType].down, (event) => {
+  isSwiped = true;
+  //Get X and Y Position
+  getXY(event);
+  initialX = mouseX;
+  initialY = mouseY;
+  }, true);
+
+  //Mousemove / touchmove
+  touchArea.addEventListener(events[deviceType].move, (event) => {
+  if (!isTouchDevice()) {
+    event.preventDefault();
+  }
+  if (isSwiped) {
+    getXY(event);
+    let diffX = mouseX - initialX;
+    let diffY = mouseY - initialY;
+    if (Math.abs(diffY) > Math.abs(diffX)) {
+      diffY > 0 ? toggle(event) : doNothing();
+    } else {
+      if(event.target.classList[0] === "range" || event.target.classList[0] === "duel-range"){
+        return;
+      }
+      diffX > 0 ? handlePrevious() : handleNext();
+    }
+  }
+  });
+
+  //Stop Drawing
+  touchArea.addEventListener(events[deviceType].up, () => {
+  isSwiped = false;
+  });
+
+  touchArea.addEventListener("mouseleave", () => {
+  isSwiped = false;
+  });
+
+  window.onload = () => {
+  isSwiped = false;
+  };
+
+}
