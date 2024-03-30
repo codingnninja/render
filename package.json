@@ -1,6 +1,6 @@
 {
     "name": "@codingnninja/render",
-    "version": "0.0.12",
+    "version": "0.0.13",
     "description": "Use JSX and lots more in browsers and servers without a Virtual DOM, build or tagged templates",
     "author": "Ayobami Ogundiran (ayobami_ogundiran@yahoo.com)",
     "keywords": [
@@ -23,8 +23,7 @@
     "type": "module",
     "exports": {
         ".": {
-            "import": "./dist/esm/bundle.js",
-            "require": "./dist/cjs/bundle.cjs"
+            "import": "./dist/esm/render.min.js"        
         }
     },
     "scripts": {
