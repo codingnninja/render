@@ -36,7 +36,6 @@ const songs = [
     musicPath: "./music/local-music-3.mp3",
   }
 ];
-  
   const getSong = async (index) => {
     let song;
     let completed;
@@ -44,7 +43,6 @@ const songs = [
       const getRandomSong = () => appState.songs[Math.floor(Math.random() * appState.songs.length)]
       song = getRandomSong();
       song.isShuffled = true;
-      $render(CurrentSong, {song});
       $render(Shuffle)
       completed = await $render(CurrentSong, {song});
   
@@ -513,29 +511,16 @@ const debounce = (func, timeout=300) => {
   }
 }
 
-
-const toggle = event => {
-  let timer;
-  let timeout=30;
-  function toggleDefination(event){
-    event && event.preventDefault();
-    const [playlist, overlay] = $select('#playlist, .overlay');
-    if(playlist.classList.contains('active')){
-      playlist.classList.remove('active');
-      overlay.classList.remove('active');
-    } else {
-      playlist.classList.add('active');
-      overlay.classList.add('active');
-    }
+const toggle = (event) => {
+  event && event.preventDefault();
+  const [playlist, overlay] = $select('#playlist, .overlay');
+  if(playlist.classList.contains('active')){
+    playlist.classList.remove('active');
+    overlay.classList.remove('active');
+  } else {
+    playlist.classList.add('active');
+    overlay.classList.add('active');
   }
-
-  clearTimeout(timeout);
-  const deferred = () => {
-    timer = null;
-    toggleDefination(event);
-  };
-  timer && clearTimeout(timer);
-  timer = setTimeout(deferred, timeout); 
 }
 
 const Header = ({toggle}) => {
@@ -667,7 +652,7 @@ if(/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigat
     let diffX = mouseX - initialX;
     let diffY = mouseY - initialY;
     if (Math.abs(diffY) > Math.abs(diffX)) {
-      diffY > 0 ? toggle(event) : doNothing();
+      diffY > 0 ? doNothing() : doNothing();
     } else {
       if(event.target.classList[0] === "range" || event.target.classList[0] === "duel-range"){
         return;

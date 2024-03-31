@@ -1,15 +1,470 @@
-import {processJSX} from './dom';
-import {replacer, 
-        reviver, 
-        formatKeyValuePairs,
-        checkForObjectString,
-        isObject,
-        sanitizeString,
-        normalizePropPlaceholderAndUtilInTrigger,
-        isPromise
-      } from './utils'
-
 let _$;
+
+function removeComments(code) {
+  return code.replace(/\/\/.*|\/\*[\s\S]*?\*\//g, ' ');
+}
+function sanitizeString(str) {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, "&#x27;")
+    .replace(/\\r/g, "\r")
+    .replace(/\\n/g, "\n")
+    .replace(/`/g, "&#96")
+    .replace(/\//g, '&#x2F;');
+}
+
+function deSanitizeString(str) {
+  const props = str.replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#x27;/g, "'")
+    .replace(/\r/g, "\\r")
+    .replace(/\n/g, "\\n")
+    .replace(/&#96/g, "`")
+    .replace(/&#x2F;/g, '\/');
+  return props
+}
+
+const replacer = (key, value) => {
+  if (typeof value === 'function') {
+    const sanitizedString = sanitizeString(removeComments(value.toString()))
+    return `__function__:${sanitizedString}`;
+  } else if (typeof value === 'symbol') {
+    return `__symbol__${String(value)}`;
+  } else if (value instanceof Map) {
+    return {
+      dataType: 'Map',
+      value: Array.from(value.entries())
+    };
+  } else if (value instanceof Set) {
+    return {
+      dataType: 'Set',
+      value: Array.from(value)
+    };
+  } else {
+    return value;
+  }
+};
+
+const reviver = (key, value) => {
+  if (typeof value === 'string' && value.startsWith('__function__')) {
+    let functionString = value.slice(13);
+    const deSanitizedString = deSanitizeString(functionString);
+    return new Function(`return ${deSanitizedString}`)();
+  } else if (value && typeof value === 'object' && value.dataType === 'Map') {
+    return new Map(value.value);
+  } else if (value && typeof value === 'object' && value.dataType === 'Set') {
+    return new Set(value.value);
+  } else {
+    return value;
+  }
+};
+
+function formatKeyValuePairs(input) {
+  return input.replace(/(\w+)=\${(.*?)}/g, (match, key, value) => {
+    return key + '="${' + value + '}"';
+  });
+}
+
+//replace $trigger first argument with ${name} if it has {name}
+function normalizePropPlaceholderAndUtilInTrigger(input) {
+  const regex = /\$trigger\(([^,$]+)(?:,([^,$]+))?(?:,\s*{([^{}$]+)}\s*)?\)/g;
+  return input.replace(regex, (_, arg1, arg2, value) => {
+    const updatedArg1 = arg1.startsWith('{') ? `$${arg1}`: arg1;
+    if(value === undefined) {
+      return "$trigger("+updatedArg1 + "," + arg2 + ")";
+    } 
+    return "$trigger("+updatedArg1 + "," + arg2 + ",'${stringify(" + value + ")}')";
+  });
+}
+
+function isObject(value) {
+  return (
+    typeof value === "object" && value !== null && !Array.isArray(value)
+  );
+};
+
+async function checkForObjectString(input) {
+  input = isPromise(input) ? await input : input;
+  if (input.includes('[object Object]')) {
+    console.log(input)
+    throw new Error('You are expected to pass an object or an array of object(s) with {} but you used ${}');
+  }
+  return input;
+}
+
+function isPromise(value) {
+  return Boolean(value && typeof value.then === "function");
+}
+
+const CONSTANT = {
+  cap: 'cap',
+  isFirstLetterCapped: 'isFirstLetterCapped',
+  isComponentCloseTag: 'isComponentCloseTag',
+  isNotTag: 'isNotTag'
+}
+
+ /**
+ * remove script tag
+ * @param str
+ * @returns {string | * | void}
+ */
+
+ function removeScript(str){
+   return str.replace(/<script[^>]*>([^]*?)<\/script>/g, '');
+ }
+ 
+  /**
+ * normalize brackets
+ * @param str
+ * @returns {string | * | void}
+ */
+
+ function correctBracket(str) {
+   return str.replace(/("[^<>\/"]*)<([^<>\/"]+)>([^<>\/"]*")/g, '"$1|$2|$3"');
+ }
+ 
+  /**
+ * remove comment
+ * @param str
+ * @returns {string | * | void}
+ */
+
+ function removeComment(str) {
+   return str.replace(/<!--[^>]*-->/g, '');
+ }
+ 
+ /**
+  * remove break line
+  * @param str
+  * @returns {string | * | void}
+  */
+ function removeBreakLine(str) {
+   return str.replace(/[\r\n\t]/g, '');
+ }
+ 
+ /**
+  * get body if available
+  * @param str
+  * @returns {*}
+  */
+ function getBodyIfHave(str) {
+   const match = str.match(/<body[^>]*>([^]*)<\/body>/);
+   if (!match) {
+     return str;
+   }
+   return match[1];
+ }
+
+  /**
+ * Tag regex matchers
+ * @param str
+ * @returns {Boolean}
+ */
+ function isLine(property, line){
+  let patterns = {
+    cap: /[A-Z]/.test(line),
+    self: /<([^\s<>]+) ?([^<>]*)\/>/.test(line),
+    close: /<\/([^\s<>]+)>/.test(line),
+    start: /<([^\s<>]+) ?([^<>]*)>/.test(line),
+    text: /<(?:\/?[A-Za-z]+\b[^>]*>|!--.*?--)>/.test(line),
+    isFirstLetterCapped: /<([A-Z][A-Za-z0-9]*)/.test(line),
+    isComponentCloseTag: /<\/[A-Z][A-Za-z0-9]*>/.test(line),
+    isNotTag: /^(?!<\w+\/?>$).+$/.test(line)
+  }
+  return patterns[property];
+ }
+
+ /**
+  * node type
+  * @type {{text: string, self: string, close: string, start: string}}
+  */
+  const NODE_TYPE = {
+    text: 'text',
+    self: 'self',
+    close: 'close',
+    // start or total
+    start: 'start',
+    element: 'element',
+  };
+ 
+ 
+/**
+ * converts attributes to props
+ * @param str
+ * Todo: This should be made better with a proper parsing 
+ * @returns {{}}
+ */
+
+ function convertAttributesToProps(str){
+  const regexToMatchProps = /([\S]+=([`"']?)(_9s35Ufa7M67wghwT_([^]*?)_9s35Ufa7M67wghwT_)\1)/g;
+  const matches = {};
+  let match;
+
+  try {
+    while ((match = regexToMatchProps.exec(str)) !== null) {
+      const extractedContent = match[1].match(/([^=]+)=([^]*)/);
+      const value = extractedContent[2].match(/([`"']?)(_9s35Ufa7M67wghwT_([^]*?)_9s35Ufa7M67wghwT_)\1/);
+    
+      const parsedJSON = JSON.parse(value[3], reviver);
+      matches[extractedContent[1]] = parsedJSON;
+    }
+  } catch (error) {
+    // If parsing fails due to a SyntaxError, handle the error here
+    console.error("Parsing Error:", error);
+  }
+
+  return matches;
+}
+
+/**
+ * make sure strings in boolean or number nature are converted to boolean or number
+ * @param str
+ * @returns {{}}
+ */
+
+function normalizeNumberOrBoolean(paramValue){
+  if (/^\d+$/.test(paramValue)) {
+    return Number(paramValue);
+  } else if (/^(true|false)$/.test(paramValue)) {
+    paramValue = paramValue === 'true';
+    return paramValue;
+  }
+  return paramValue;
+}
+
+/**
+ * handle attribute
+ * @param str
+ * @returns {{}}
+ */
+ function convertAttributes(str) {
+  if (!str) {
+    return {};
+  }
+  const extractedNonStructuredDataType = {}
+  const extractedObjectAndArray = convertAttributesToProps(str);
+  const regexToMatchProps = /([\S]+=([`"']?)(_9s35Ufa7M67wghwT_([^]*?)_9s35Ufa7M67wghwT_)\1)/g;
+  const _str = str.replace(regexToMatchProps, ' ');
+  const arr = _str.replace(/[\s]+/g, ' ').trim().match(/([\S]+="[^"]*")|([^\s"]+)/g);
+
+  arr.forEach((item) => {
+    if (item.indexOf('=') === -1) {
+      if(item === "/"){
+        return;
+      }
+      extractedNonStructuredDataType[item] = true;
+    } else {
+      //just split first =
+      const match = item.match(/([^=]+)=([^]*)/);
+      // remove string ""
+      let paramValue = (match[2] && match[2].replace(/^"([^]*)"$/, '$1'));
+      extractedNonStructuredDataType[match[1]] = normalizeNumberOrBoolean(paramValue);
+    }
+  });
+  const props = {
+    ...extractedObjectAndArray, 
+    ...extractedNonStructuredDataType
+  }; 
+
+  return props;
+}
+
+ /**
+  * check for component
+  * @param str
+  * @returns boolean
+  */
+ function isComponent(line){
+  if(!isLine(CONSTANT.isFirstLetterCapped, line)){
+    return false;
+  }
+  return true;
+ }
+
+ /**
+ * Normalize html tags
+ * @param str
+ * @returns {string | * | void}
+ */
+function normalizeHTML(str){
+  return correctBracket(
+    getBodyIfHave(
+      removeBreakLine(
+        removeComment(
+          removeScript(str)
+        )
+      )
+    )
+  );
+}
+
+const parseChildrenComponents = async function(extensibleStr, currentElement){
+  
+  const line = currentElement;
+  const regularMatch = line.match(/<([^\s<>]+) ?([^<>]*)>/);
+  const selfClosingMatch = line.match(/<([^\s<>]+) ?([^<>]*)\/>/);
+  
+  const node = regularMatch ? regularMatch : selfClosingMatch;
+  const dependencies = {
+    tagName: node[1], 
+    props: convertAttributes(deSanitizeString(node[2])), 
+    children: selfClosingMatch ? '' : '__placeholder'
+  };
+
+  try {
+    let calledComponent = await callComponent(dependencies);
+    const component = normalizeHTML(sanitizeOpeningTagAttributes(calledComponent));
+
+    const indexOfCurrentElement = extensibleStr.indexOf(currentElement);
+    const result = component.split(/(<[^<>]+>)/);
+
+    if(indexOfCurrentElement !== -1) {
+      extensibleStr.splice(indexOfCurrentElement, 1, ...result);
+      return extensibleStr;
+    }
+  } catch(error){
+    console.error(error);
+  }
+};
+
+ /**
+ * sanitizes string
+ * @param str
+ * @returns {string | * | void}
+ */
+
+function convertStackOfHTMLToString(stack) {
+  let html = ``;
+  if (stack.length > 0) {
+    stack.forEach((node, index) => {
+      // text node
+      if(isLine(NODE_TYPE.close, node)) {
+        if(isLine(CONSTANT.isComponentCloseTag, node)) {
+          html+='</div>';
+        } else if(!isLine(CONSTANT.isFirstLetterCapped, node) && stack[index - 1] === '__placeholder'){
+          html+='';
+        } else if(!isLine(CONSTANT.isFirstLetterCapped, node) && stack[index - 1].trim() !== '__placeholder'){
+          html+=node;
+        } 
+        // html+=node;
+      } else if(node.trim() === ","){
+        html+="";
+      } else if(isLine(NODE_TYPE.start, node)) {
+        html += node;
+      } else if(isLine(CONSTANT.isNotTag, node) && node.trim() !== '__placeholder') {
+        html += node;
+      }
+    });
+  }
+  return html;
+}
+
+/**
+* parses html and jsx
+* @param str
+* @returns {*}
+*/
+async function parseComponent (str) {
+  //open tag matching pattern 
+  const pattern = /(<[^<>]+>)/;
+  if (!str) {
+    return null;
+  }
+
+  try {
+    let extensibleStr = str.split(pattern);
+    const stack = [];
+    let depth = 0;
+    while (extensibleStr.length > depth ) {
+    const currentElement = extensibleStr[depth]
+      if(currentElement.trim() === '') {
+        depth++
+        continue;
+      } 
+      if(isComponent(currentElement)){
+        extensibleStr = await parseChildrenComponents(extensibleStr, currentElement);
+      } else {
+        stack.push(deSanitizeOpeningTagAttributes(currentElement));
+        depth++;
+      }
+    }
+
+    return convertStackOfHTMLToString(stack);
+  } catch (error) {
+    console.error(error);
+  }
+  
+};
+
+/**
+ * convert tag string to a function equivalent with a tag name
+ * @param element
+ * @returns {function}
+ */
+
+ function resolveFunction(tagName){
+  const fn = Function(`return ${tagName}`)(); 
+  if (typeof fn !== "function") {
+    throw TypeError('This component is not defined');
+  }
+
+  return fn;
+}
+
+/**
+ * Call a component with or without props
+ * @param str
+ * @returns {function}
+ */
+async function callComponent(element) {
+  
+  try {
+    const component = globalThis[element.tagName];
+    const modifiedComponent = makeFunctionFromString(component.toString());
+    const children = element.children;
+    let props = element.props;
+    if(Object.keys(props).length === 0 && !element.children) {
+      return checkForObjectString(modifiedComponent());
+    } else {
+     /*  if(isObject(props) && 
+         isObject(props[Object.keys(props)[0]]) &&
+         Object.keys(props).length === 1){
+          props = props[Object.keys(props)[0]];
+      } */
+
+      if(element.children){
+        props.children = children;
+      }
+
+      const calledComponent = checkForObjectString(modifiedComponent(props));
+      const resolvedComponent = isPromise(calledComponent) ? await calledComponent : calledComponent;
+      return resolvedComponent;
+    } 
+  } catch (error) {
+    console.error(`${error} in ${element.tagName}`);
+  }
+};
+
+/**
+* process JSX from html
+* @param str
+* @constructor
+*/
+ const processJSX = async function (str) {
+   let _str = str || '';
+   try {
+    _str = normalizeHTML(_str);
+    const a = await parseComponent(_str);
+    return a;
+   } catch (error) {
+    console.error(error);
+   }
+ };
 
 if(typeof document !== 'undefined'){
    _$ = document.querySelectorAll.bind(document);
@@ -430,12 +885,8 @@ registerInternalUtils();
 
 export {
   $render,
-  $register,
   $select,
-  stringify,
   $trigger,
-  $purify,
-  makeFunctionFromString,
-  sanitizeOpeningTagAttributes,
-  deSanitizeOpeningTagAttributes
+  $register,
+  stringify
 }

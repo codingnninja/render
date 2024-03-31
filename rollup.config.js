@@ -3,7 +3,7 @@ import pkg from './package.json' assert {type:"json"};
 
 export default [
   {
-    input:'src/index.js',
+    input:'src/render.js',
     output: [
       { name: 'render', file: pkg.module, format: 'es' },
     ],
