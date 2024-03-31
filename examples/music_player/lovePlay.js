@@ -36,6 +36,7 @@ const songs = [
     musicPath: "./music/local-music-3.mp3",
   }
 ];
+
   const getSong = async (index) => {
     let song;
     let completed;

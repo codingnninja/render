@@ -888,5 +888,6 @@ export {
   $select,
   $trigger,
   $register,
-  stringify
+  stringify,
+  $purify
 }
