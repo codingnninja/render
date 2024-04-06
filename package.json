@@ -1,6 +1,6 @@
 {
     "name": "@codingnninja/render",
-    "version": "0.0.14",
+    "version": "0.0.15",
     "description": "Use JSX and lots more in browsers and servers without a Virtual DOM, build or tagged templates",
     "author": "Ayobami Ogundiran (ayobami_ogundiran@yahoo.com)",
     "keywords": [
