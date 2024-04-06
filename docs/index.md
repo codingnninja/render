@@ -4,33 +4,33 @@ layout: home
 # Hero section
 hero:
   name: $render.jsx
-  text: Use no-build JSX in browsers and servers
+  text: Cross-platform JSX
   image:
     src: /logo-big.svg
     alt: Adocs logo
-  tagline: $render makes no-build JSX possible in browsers and servers without a virtual DOM or tagged template.
+  tagline: Enjoy pure JSX in browsers and servers without struggles. It is stupid simple.
   actions:
     - theme: brand
       text: Get Started
       link: /guide
     - theme: alt
       text: View on GitHub
-      link: https://github.com/Evavic44/adocs
+      link: https://github.com/codingnninja/render/docs
 
 # Features section
 features:
   - icon: ⚡️
-    title: Adocs, The DX that can't be beat
-    details: Lorem ipsum...
+    title: Client & server rendering
+    details: Render JavaScript JSX components in browsers and servers with ease.
   - icon: 🎉
-    title: Power of Vue meets Markdown
-    details: Lorem ipsum...
+    title: Target re-rendering
+    details: Re-render only the component users interact with.
   - icon: 🔥
-    title: Simple and minimal, always
-    details: Lorem ipsum...
+    title: No-build JSX
+    details: Pre-render with the speed of light on the server.
   - icon: 🎀
-    title: Stylish and cool
-    details: Lorem ipsum...
+    title: Works everywhere
+    details: It works with any JavaScript runtime - client or server.
 
 # Meta property
 head:
@@ -39,16 +39,16 @@ head:
       content: website
   - - meta
     - property: og:title
-      content: Adocs
+      content: $render.jsx docs
   - - meta
     - property: og:image
-      content: https://user-images.githubusercontent.com/62628408/200117602-4b274d14-b1b2-4f61-8dcd-9f9482c677a0.png
+      content: 
   - - meta
     - property: og:url
       content: https://vitejs.dev/blog/announcing-vite3
   - - meta
     - name: title
-      content: Adocs
+      content: $render docs
   - - meta
     - name: twitter:card
       content: https://user-images.githubusercontent.com/62628408/200117602-4b274d14-b1b2-4f61-8dcd-9f9482c677a0.png

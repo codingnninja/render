@@ -451,7 +451,7 @@ const Audio = ({song}) => {
           </div>
           <div class="song-details">
           <span id="title">${song.title}</span>
-            <span id="date">${song.month} (${song.year})</span>
+            <span id="date">${song.artist} (${song.year})</span>
           </div>
       </button>
     </div>

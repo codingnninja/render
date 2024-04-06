@@ -1,7 +1,6 @@
 import { $render, $register, $select } from "../../dist/esm/render.min.js";
 
 // const { $render, $register, stringify, $select, $purify } = render;
-
 const audioURL = '';
 
 const images = [
@@ -73,19 +72,19 @@ const images = [
           <Counter />
           <Home images={props.images} />
           <Others props="{props}" />
-          <Users options="{props}" />
+          <Defer id="users" props="{props}" component="Users" />
         </div>
       `;
     }
 
-  function Defer({id, action}){
-    return `
-      <div id="${id}">
-        <img src="https://cdn.pixabay.com/animation/2023/08/11/21/18/21-18-05-265_512.gif" style="width:32px"> loading...
-        <iframe onload="${action}" height="0"></iframe>
-      </div>
-    `
-  }
+    export function Defer({id, component, props}){
+      return `
+        <div id="${id}" data-render="defer">
+          <img src="https://cdn.pixabay.com/animation/2023/08/11/21/18/21-18-05-265_512.gif" style="width:32px" loading="lazy"> loading...
+          <iframe onload="$render(${component}, '${stringify(props)}')" height="0"></iframe>
+        </div>
+      `;
+    }
 
   const Home = ({images}) => {
     const test = {

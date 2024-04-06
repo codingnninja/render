@@ -91,7 +91,6 @@ function isObject(value) {
 async function checkForObjectString(input) {
   input = isPromise(input) ? await input : input;
   if (input.includes('[object Object]')) {
-    console.log(input)
     throw new Error('You are expected to pass an object or an array of object(s) with {} but you used ${}');
   }
   return input;
@@ -510,7 +509,13 @@ function isInitialLetterUppercase(func, context) {
         throw('A component must start with a capital letter.')
       }
       if(isBrowser() && typeof document !== 'undefined'){
-       return handleClientRendering(updatedComponent, props);
+        if(document.readyState === 'complete'){
+          return handleClientRendering(updatedComponent, props);
+        } else {
+          window.addEventListener('load', ()=> {
+            return handleClientRendering(updatedComponent, props);
+          })
+        }
       }
       const resolvedComponent = await resolveComponent(updatedComponent, props)
       const result = await processJSX(sanitizeOpeningTagAttributes(resolvedComponent));
@@ -564,7 +569,7 @@ function insertElementsIntoParent(parent, elements, parseComponent){
     }
 
   } else {
-    console.error('Invalid parameters. Parent element and array of elements are expected');
+    console.error(`Invalid parameters. You need to add data-render="defer" to the wrapping div of component to defer its execution to the client or you need to add data-replace, data-append or data-prepend to the target container to update the content of a fetcher. Solution: (lick to docs)`);
   }
 }
 
@@ -620,6 +625,8 @@ function deSanitizeOpeningTagAttributes(tag) {
 
   let el = $el(parsedComponent.id);//current component
   if (el && !isFetcher(parsedComponent)) {
+    el.parentNode.replaceChild(parsedComponent, el);
+  } else if(el && el.dataset.render === "defer"){
     el.parentNode.replaceChild(parsedComponent, el);
   } else if(el && parsedComponent.dataset.replace) {
     stopIfNotStartWithHash(parsedComponent.dataset.replace, 'data.replace');
