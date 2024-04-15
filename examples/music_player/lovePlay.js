@@ -1,6 +1,6 @@
 'use strict'
 
-import { $render, $register, stringify, $select, $purify } from "https://cdn.jsdelivr.net/npm/@codingnninja/render/dist/esm/render.min.js";
+import { $render, $register, stringify, $select, $purify } from "../../dist/esm/render.min.js";
 let playingInterval;
 
 /**All music information */
@@ -92,7 +92,7 @@ const getTimecode = function (duration) {
 const updateRunningTime = (song) => {
   const [playingAudio, playerSeekRange, playerRunningTime, rangeFill] = $select( `#audio-${song.id}, #seek-${song.id}, #running-time, #range-fill`);
 
-  if(Math.floor(playingAudio.currentTime) === appState.range.end){
+  if(Math.floor(playingAudio.currentTime) >= appState.range.end){
     if(!appState.repeat){
       appState.range.end = playingAudio.duration;
     }
@@ -148,7 +148,7 @@ const appState = {
   volume: null,
   range: {
     start: 0,
-    end: null
+    end: 300
   }
 }
 
@@ -525,7 +525,6 @@ const toggle = (event) => {
 }
 
 const Header = ({toggle}) => {
-  console.log(toggle);
   return `
     <div class="top-bar wrapper">
       <!--navbar-->
@@ -563,7 +562,7 @@ $register(
 globalThis['appState'] = appState;
 
 const a = await $render(App, {songs, toggle});
-console.log(a);
+// console.log(a);
 
 
 if(/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)){

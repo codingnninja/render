@@ -509,11 +509,14 @@ function isInitialLetterUppercase(func, context) {
         throw('A component must start with a capital letter.')
       }
       if(isBrowser() && typeof document !== 'undefined'){
+        let renderedApp;
         if(document.readyState === 'complete'){
-          return handleClientRendering(updatedComponent, props);
+          renderedApp = await handleClientRendering(updatedComponent, props);
+          return renderedApp
         } else {
-          window.addEventListener('load', ()=> {
-            return handleClientRendering(updatedComponent, props);
+          window.addEventListener('load', async ()=> {
+            renderedApp = await handleClientRendering(updatedComponent, props);
+            return renderedApp;
           })
         }
       }
@@ -690,20 +693,33 @@ function $register(...args) {
   return globalThis;
 }
 
-function $trigger(func, anchors, data){
-  try {
-    if(typeof func === 'function'){
-      if(!anchors && !data){
-        return func();
-      }
-      if(!anchors && data){
-        return func($purify(data));
-      }
-      const elements = $select(anchors);
-      const result = !data ? func(elements) : func(elements, $purify(data));
-      return result;
+function callFunctionWithElementsAndData(func, anchors, data) {
+  if(typeof func === 'function'){
+    if(!anchors && !data){
+      return func();
     }
-    throw(`There is an error in ${func.name ?? func}`)
+    if(!anchors && data){
+      return func($purify(data));
+    }
+    const elements = $select(anchors);
+    const result = !data ? func(elements) : func(elements, $purify(data));
+    return result;
+  }
+  throw(`There is an error in ${func.name ?? func} or the first argument passed to $trigger is not a function`);
+}
+function $trigger(func, anchors, data){ 
+  try {
+    if(isBrowser() && typeof document !== 'undefined'){
+      if(document.readyState === 'complete'){
+        return callFunctionWithElementsAndData(func, anchors, data);
+      } else {
+        window.addEventListener('load', ()=> {
+          return callFunctionWithElementsAndData(func, anchors, data);
+        })
+      }
+    } else {
+      throw('You can not use $trigger on servers');
+    }
   } catch (error) {
     console.error(`${error} but ${func.name ? `${typeof func.name}` : typeof func} is provided in ${func.name ?? func}`);
   }
