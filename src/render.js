@@ -514,7 +514,7 @@ function isInitialLetterUppercase(func, context) {
           renderedApp = await handleClientRendering(updatedComponent, props);
           return renderedApp
         } else {
-          window.addEventListener('load', async ()=> {
+          window.addEventListener('DOMContentLoaded', async ()=> {
             renderedApp = await handleClientRendering(updatedComponent, props);
             return renderedApp;
           })
@@ -713,7 +713,7 @@ function $trigger(func, anchors, data){
       if(document.readyState === 'complete'){
         return callFunctionWithElementsAndData(func, anchors, data);
       } else {
-        window.addEventListener('load', ()=> {
+        window.addEventListener('DOMContentLoaded', ()=> {
           return callFunctionWithElementsAndData(func, anchors, data);
         })
       }

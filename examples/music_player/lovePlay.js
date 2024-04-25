@@ -487,7 +487,7 @@ const Songs = ({songs}) => {
 
   const songList = songs.map((song) =>`<Audio song=${stringify(song)} />`);
   return `
-    <div class="music-list" id="music-list">
+    <div class="music-list" id="music-list" data-append="#music-list">
       <div 
         style="border: 1px solid silver; text-align:center; border-radius: 8px"
         onclick="$trigger(${downloadAll})"
@@ -564,6 +564,83 @@ globalThis['appState'] = appState;
 const a = await $render(App, {songs, toggle});
 // console.log(a);
 
+if(a){
+  const [uploadSongsButton, audioList] = $select('#uploadSongsButton, #audioList');
+  console.log(uploadSongsButton, audioList);
+    uploadSongsButton.addEventListener('click', async () => {
+
+    let selectedFolderHandle = await window.showDirectoryPicker(); 
+      try {
+        audioList.innerHTML = ''; // Clear previous audio elements
+        await scanFiles(selectedFolderHandle);
+      } catch (err) {
+        console.error('Error scanning files:', err);
+      }
+    });
+  
+    function saveFile(file){
+      let storedFile = localStorage.getItem('lovePlay') ? localStorage.getItem('lovePlay') : '';
+      let lovePlay = {};
+      if(storedFile){
+        storedFile[file.name] = file;
+        lovePlay = localStorage.setItem('lovePlay', storedFile);
+      }
+      return lovePlay;
+    }
+    async function scanFiles(directoryHandle) {
+      let songs = [];
+      let song = {};
+      let depth = 1;
+      for await (const entry of directoryHandle.values()) {
+        if (entry.kind === 'file') {
+          if (entry.name.endsWith('.mp3') || entry.name.endsWith('.wav') || entry.name.endsWith('.ogg')) {
+            const file = await entry.getFile();
+            const objectURL = URL.createObjectURL(file);
+            song.musicPath = objectURL;
+            song.id = depth;
+            songs.push(song);
+            $render(Songs, {songs});
+            const audioElement = document.createElement('audio');
+            audioElement.src = objectURL;
+            audioElement.controls = true;
+            audioList.appendChild(audioElement);
+            
+            console.log(song);
+            jsmediatags.read(file, {
+              onSuccess: function(tag) {
+                const artist = tag.tags.artist || 'Unknown Artist';
+                song.artist = artist;
+                const title = tag.tags.title || 'Unknown Title';
+                song.title = title;
+                const year = tag.tags.year || 'Unknown Year';
+                song.year = year;
+                const metadataDiv = document.createElement('div');
+                metadataDiv.innerHTML = `<strong>Title:</strong> ${title}<br><strong>Artist:</strong> ${artist}<br><strong>Year:</strong> ${year}`;
+                audioList.appendChild(metadataDiv);
+  
+                if (tag.tags.picture) {
+                  const picture = tag.tags.picture;
+                  const base64String = btoa(String.fromCharCode.apply(null, picture.data));
+                  const imgElement = document.createElement('img');
+                  imgElement.src = `data:${picture.format};base64,${base64String}`;
+                  song.posterUrl = imgElement.src;
+                  audioList.appendChild(imgElement);
+                }
+                songs.push(song);
+              },
+              onError: function(error) {
+                console.error('Error reading tags:', error);
+              }
+            });
+            // audioElement.play();
+          }
+        } else if (entry.kind === 'directory') {
+          await scanFiles(entry);
+        }
+        depth++;
+      }
+    }
+  }
 
 if(/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)){
     
