@@ -160,9 +160,21 @@ const Player = ({songs}) => {
   `;
 }
 const Playlist = ({songs}) => {
+  const props = {songs};
   return `
       <div class="playlist" id="playlist">
-        <Songs songs=${stringify(songs)}/>
+        <button class=""
+          onclick="$render(Songs, {props})"
+          >
+            Latest songs
+        </button>
+        <button 
+          class=""
+          onclick="$render()"
+          >
+            pause
+          </button>
+          <Songs songs=${stringify(songs)}/>
       </div>
   `;
 }

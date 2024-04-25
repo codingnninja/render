@@ -713,7 +713,7 @@ function $trigger(func, anchors, data){
       if(document.readyState === 'complete'){
         return callFunctionWithElementsAndData(func, anchors, data);
       } else {
-        window.addEventListener('DOMContentLoaded', ()=> {
+        window.addEventListener('load', ()=> {
           return callFunctionWithElementsAndData(func, anchors, data);
         })
       }
