@@ -497,17 +497,28 @@ const Songs = ({songs}) => {
     }
   }
 
-  const songList = songs.map((song) =>`<Audio song=${stringify(song)} />`);
+  const songList = songs.map((song) => {
+    return `<Audio song=${stringify(song)} />`;
+  });
+  
   return `
-    <div class="music-list" id="music-list" data-append="#music-list">
+    <div 
+      id="songs" 
+      data-append="#music-list"
+      data-fallback="LoadingSvg"
+      >
       <div 
-        style="border: 1px solid silver; text-align:center; border-radius: 8px"
+        style="border: 1px solid silver; 
+        text-align:center; 
+        border-radius: 8px"
         onclick="$trigger(${downloadAll})"
       >
         <span class="material-symbols-rounded active">download</span> all
       </div>
-        <span id="selection-error">No song selected</span>
-      ${songList}
+      <span id="selection-error">No song selected</span><br>
+      <div id="music-list" class="music-list">
+        ${songList}
+      </div>
     </div>`;
 }
 
@@ -654,114 +665,18 @@ if(a){
     }
   }
 
-if(/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)){
-    
-  // Swiping implementation
-  let [touchArea, overlay] = $select("#player, #overlay");
-
-  const doNothing = () => {
-  return;
-  }
-
-  const handlePrevious = debounce(() => {
-    let previousComponent = $select("#previous>button>span");
-    previousComponent.click();
-  });
-
-  const handleNext = debounce (() => {
-    let nextComponent = $select("#next>button>span");
-    nextComponent.click();
-  });
-  //Initial mouse X and Y positions are 0
-
-  let mouseX,
-  initialX = 0;
-  let mouseY,
-  initialY = 0;
-  let isSwiped;
-
-  //Events for touch and mouse
-  let events = {
-  mouse: {
-    down: "mousedown",
-    move: "mousemove",
-    up: "mouseup",
-  },
-  touch: {
-    down: "touchstart",
-    move: "touchmove",
-    up: "touchend",
-  },
-  };
-
-  let deviceType = "";
-
-  //Detect touch device
-
-  const isTouchDevice = () => {
-  try {
-    //We try to create TouchEvent (it would fail for desktops and throw error)
-    document.createEvent("TouchEvent");
-    deviceType = "touch";
-    return true;
-  } catch (e) {
-    deviceType = "mouse";
-    return false;
-  }
-  };
-
-  //Get left and top of touchArea
-  let rectLeft = touchArea.getBoundingClientRect().left;
-  let rectTop = touchArea.getBoundingClientRect().top;
-
-  //Get Exact X and Y position of mouse/touch
-  const getXY = (e) => {
-  mouseX = (!isTouchDevice() ? e.pageX : e.touches[0].pageX) - rectLeft;
-  mouseY = (!isTouchDevice() ? e.pageY : e.touches[0].pageY) - rectTop;
-  };
-
-  isTouchDevice();
-
-  //Start Swipe
-  touchArea.addEventListener(events[deviceType].down, (event) => {
-  isSwiped = true;
-  //Get X and Y Position
-  getXY(event);
-  initialX = mouseX;
-  initialY = mouseY;
-  }, true);
-
-  //Mousemove / touchmove
-  touchArea.addEventListener(events[deviceType].move, (event) => {
-  if (!isTouchDevice()) {
-    event.preventDefault();
-  }
-  if (isSwiped) {
-    getXY(event);
-    let diffX = mouseX - initialX;
-    let diffY = mouseY - initialY;
-    if (Math.abs(diffY) > Math.abs(diffX)) {
-      diffY > 0 ? doNothing() : doNothing();
-    } else {
-      if(event.target.classList[0] === "range" || event.target.classList[0] === "duel-range"){
-        return;
-      }
-      diffX > 0 ? handlePrevious() : handleNext();
-    }
-  }
-  });
-
-  //Stop Drawing
-  touchArea.addEventListener(events[deviceType].up, () => {
-  isSwiped = false;
-  });
-
-  touchArea.addEventListener("mouseleave", () => {
-  isSwiped = false;
-  });
-
-  window.onload = () => {
-  isSwiped = false;
-  };
-
+const AddTodoForm = () => {
+  const latestForm = $select('.todo-form:>last-child');
+  const nextFormId = latestForm ? latestForm.id + 1 : 0; 
+  return `
+    <div 
+      class="todo-form" 
+      id="todo-form"
+      data-append="todo-form"
+      data-use="inner"
+    >
+      <input id="${nextFormId}">
+    </div>
+    ${nextFormId ? '' : '<span onclick>plus</span>'}
+  `;
 }

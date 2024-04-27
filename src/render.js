@@ -572,7 +572,7 @@ function insertElementsIntoParent(parent, elements, parseComponent){
     }
 
   } else {
-    console.error(`Invalid parameters. You need to add data-render="defer" to the wrapping div of component to defer its execution to the client or you need to add data-replace, data-append or data-prepend to the target container to update the content of a fetcher. Solution: (lick to docs)`);
+    console.error(`Invalid parameters. You need to add data-render="defer" to the wrapping div of a component to defer its execution to the client or you need to add data-replace, data-append or data-prepend to the target container to update the content of a fetcher. Solution: (link to docs)`);
   }
 }
 
