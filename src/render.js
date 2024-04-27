@@ -700,8 +700,8 @@ function callFunctionWithElementsAndData(func, anchors, data) {
     }
     if(!anchors && data){
       return func($purify(data));
-    }
-    const elements = $select(anchors);
+    } 
+    const elements = typeof anchors !== 'string' ? anchors : $select(anchors);
     const result = !data ? func(elements) : func(elements, $purify(data));
     return result;
   }
