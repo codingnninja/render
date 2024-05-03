@@ -504,7 +504,7 @@ const Songs = ({songs}) => {
   return `
     <div 
       id="songs" 
-      data-append="#music-list"
+      data-replace="#music-list"
       data-fallback="LoadingSvg"
       >
       <div 
@@ -563,6 +563,7 @@ const Header = ({toggle}) => {
     </div>
   `;
 }
+
 const App = ({songs, toggle}) => {
   return `
     <div id="main">
@@ -575,7 +576,6 @@ const App = ({songs, toggle}) => {
     </div>
   `;
 }
-
 
 $register(
     Header, Player, Playlist, Play, CurrentSong,
@@ -664,6 +664,43 @@ if(a){
       }
     }
   }
+
+function Notes({notes=[{text:'', id:0}], READ=true}= {}){
+  const createdNotes = (READ && localStorage.getItem('notes')) ? JSON.parse(localStorage.getItem('notes')) : notes;
+
+  const nextNoteId = notes[0].id + 1;
+  const props = {notes: [{text: '', id: nextNoteId}], READ:false};
+  const saveNote = (element, createdNotes) => {
+    const notes = [...createdNotes, {text: element.value, id: element.id}];
+    const savedNotes = localStorage.setItem('notes', JSON.stringify(notes));
+    //code to save the notes on the server.
+  }
+
+  return `
+    <div id="notes-containter">
+      <div
+        id="notes"
+        data-append="#notes",
+        data-fallback="LoadingSvg"
+      >
+        ${(createdNotes && createdNotes.length !==0) ? 
+          createdNotes.map(note => {
+            return `
+              <div
+                id="${note.id}"
+                contenteditable=""  
+                onblur="$trigger(${saveNote}, 'note-${note.id}', {createdNotes})" 
+              > 
+                ${note.text}
+              </div>
+            `;
+          }) : 'No note found'
+        }
+      </div>
+      <button onclick="$render(Notes, {props})">Add a note</button>
+    </div>
+  `;
+}
 
 const AddTodoForm = () => {
   const latestForm = $select('.todo-form:>last-child');

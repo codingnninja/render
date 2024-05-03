@@ -401,21 +401,6 @@ async function parseComponent (str) {
 };
 
 /**
- * convert tag string to a function equivalent with a tag name
- * @param element
- * @returns {function}
- */
-
- function resolveFunction(tagName){
-  const fn = Function(`return ${tagName}`)(); 
-  if (typeof fn !== "function") {
-    throw TypeError('This component is not defined');
-  }
-
-  return fn;
-}
-
-/**
  * Call a component with or without props
  * @param str
  * @returns {function}
@@ -511,6 +496,7 @@ function isInitialLetterUppercase(func, context) {
       if(isBrowser() && typeof document !== 'undefined'){
         let renderedApp;
         if(document.readyState === 'complete'){
+          executeFallback(updatedComponent.toString());
           renderedApp = await handleClientRendering(updatedComponent, props);
           return renderedApp
         } else {
@@ -554,6 +540,45 @@ function isFetcher(parsedComponent){
     return true;
   }
   return false;
+}
+
+function extractFetcherAttributes(functionString){
+  const fallbackMatcher = /data-(fallback)="([^"]*)"/;
+  const componentMatcher = /data-(replace|prepend|append)="([^"]*)/;
+
+  const fetcherAttributes = {};
+
+  const matchedFallback = fallbackMatcher.exec(functionString);
+  const matchedComponent = componentMatcher.exec(functionString);
+
+  matchedFallback ? fetcherAttributes[matchedFallback[1]] = matchedFallback[2] : fetcherAttributes["data-fallback"] = matchedFallback;
+  matchedComponent ? fetcherAttributes["componentId"] = matchedComponent[2] : fetcherAttributes["componentId"] = matchedComponent;
+  fetcherAttributes["action"] = matchedComponent ? matchedComponent[1] : null;
+
+  return fetcherAttributes;
+}
+
+function executeFallback(value){  
+  const fetcherAttributes = extractFetcherAttributes(value.toString());
+  if (fetcherAttributes.componentId){ 
+    const targetComponent = document.querySelector(fetcherAttributes.componentId);
+    
+    const component = globalThis[fetcherAttributes['fallback']];
+    const modifiedComponent = component ? makeFunctionFromString(component.toString()) : '';
+    const fallback = document.createElement('div');
+    fallback.id = 'render-fallback';
+    const content = `${(fetcherAttributes.targetComponent && modifiedComponent) ? modifiedComponent(targetComponent.id): 'Loading...'}`;
+    fallback.innerHTML = content;
+    fetcherAttributes.action === 'append' ? targetComponent.append(fallback) : targetComponent.prepend(fallback);
+    return true;
+  };
+}
+
+function removeFallback(target){
+  if(!target){ return false }
+  const fallback = document.querySelector(`${target}>#render-fallback`);
+  fallback.remove();
+  return true
 }
 
 function insertElementsIntoParent(parent, elements, parseComponent){
@@ -636,13 +661,15 @@ function deSanitizeOpeningTagAttributes(tag) {
     el.parentNode.replaceChild(parsedComponent, el);
 
   } else if(el && parsedComponent.dataset.append) {
+    removeFallback(parsedComponent.dataset.append);
     stopIfNotStartWithHash(parsedComponent.dataset.append, 'data.append');
     const component = $select(`${parsedComponent.dataset.append}`);
     const latestChildren = parsedComponent.querySelectorAll(`${parsedComponent.dataset.append}> *`);
     insertElementsIntoParent(component, latestChildren, parsedComponent);
 
   } else if(el && parsedComponent.dataset.prepend) {
-    stopIfNotStartWithHash(parsedComponent.dataset.append, 'data.prepend');
+    removeFallback(parsedComponent.dataset.prepend);
+    stopIfNotStartWithHash(parsedComponent.dataset.prepend, 'data.prepend');
     const component = $select(`${parsedComponent.dataset.prepend}`);
     const latestChildren = parsedComponent.querySelectorAll(`${parsedComponent.dataset.prepend}> *`);
     insertElementsIntoParent(component, latestChildren, parsedComponent);
@@ -741,6 +768,7 @@ function stringify(arrOrObj){
     console.error(error);
   }
 }
+
 function convertToPropSystem(str){
   const regex = /([`"']?)(_9s35Ufa7M67wghwT_([^]*?)_9s35Ufa7M67wghwT_)\1/g
   let match = regex.exec(str);
