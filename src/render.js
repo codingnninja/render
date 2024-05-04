@@ -531,6 +531,7 @@ async function resolveComponent(component, arg){
   if(typeof resolvedComponent !== 'string'){
     throw('A component must return a string');
   }
+  
   return checkForObjectString(resolvedComponent);
 }
 function isFetcher(parsedComponent){
@@ -695,7 +696,7 @@ function replaceValueWithStringify(functionString) {
       return key + "=" + "${stringify(" + value + ")}";     
   });
 
-  // Todo: Make the argument optional
+  // Todo: Make sure the argument optional
   func = func.replace(/(\w+)="\$render\(([^{}]+)\, \{([^{}]+)\}\)"/g, (match, key, component, prop) => {
     return key + '="' + '$render(' + component + ',' + "'${stringify(" + prop + ")}')" + '"';  
   });
