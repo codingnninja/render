@@ -567,9 +567,10 @@ function executeFallback(value){
     const modifiedComponent = component ? makeFunctionFromString(component.toString()) : '';
     const fallback = document.createElement('div');
     fallback.id = 'render-fallback';
-    const content = `${(fetcherAttributes.targetComponent && modifiedComponent) ? modifiedComponent(targetComponent.id): 'Loading...'}`;
+    const content = `${(modifiedComponent && fetcherAttributes.componentId) ? modifiedComponent(targetComponent.id): 'Loading...'}`;
+
     fallback.innerHTML = content;
-    fetcherAttributes.action === 'append' ? targetComponent.append(fallback) : targetComponent.prepend(fallback);
+    fetcherAttributes.action == 'prepend' ? targetComponent.prepend(fallback) : targetComponent.append(fallback);
     return true;
   };
 }
@@ -639,6 +640,8 @@ function deSanitizeOpeningTagAttributes(tag) {
   let processedComponent = await processJSX(
     sanitizeOpeningTagAttributes(resolvedComponent)
   );  
+  
+  if(!processedComponent) { return processedComponent }
 
   const componentEl = parser.parseFromString(processedComponent, "text/html");
   const parsedComponent = componentEl.querySelector("body > div");

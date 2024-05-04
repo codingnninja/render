@@ -505,7 +505,7 @@ const Songs = ({songs}) => {
     <div 
       id="songs" 
       data-replace="#music-list"
-      data-fallback="LoadingSvg"
+      data-fallback="Loading"
       >
       <div 
         style="border: 1px solid silver; 
@@ -564,6 +564,10 @@ const Header = ({toggle}) => {
   `;
 }
 
+function Loading(id){
+  return `<div id="render-fallback">AB Loading...</div>`
+}
+
 const App = ({songs, toggle}) => {
   return `
     <div id="main">
@@ -579,7 +583,7 @@ const App = ({songs, toggle}) => {
 
 $register(
     Header, Player, Playlist, Play, CurrentSong,
-    CurrentSongInformation, SeekControl, ProgressIndicator, Volume, Controller, Repeat, Previous, Next, Shuffle, Songs, Audio, Overlay
+    CurrentSongInformation, SeekControl, ProgressIndicator, Volume, Controller, Repeat, Previous, Next, Shuffle, Songs, Audio, Overlay, Loading
 )
 
 globalThis['appState'] = appState;
