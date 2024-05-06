@@ -72,7 +72,7 @@ function formatKeyValuePairs(input) {
 
 //replace $trigger first argument with ${name} if it has {name}
 function normalizePropPlaceholderAndUtilInTrigger(input) {
-  const regex = /\$trigger\(([^,$]+)(?:,([^,$]+))?(?:,\s*{([^{}$]+)}\s*)?\)/g;
+  const regex = /\$trigger\(([^,$]+)(?:,([^,$]+))?(?:,\s*{([^{}$]+)}\s*)?\)/g;/* \{([^{}]+)\}\) */
   return input.replace(regex, (_, arg1, arg2, value) => {
     const updatedArg1 = arg1.startsWith('{') ? `$${arg1}`: arg1;
     if(value === undefined) {
@@ -531,7 +531,7 @@ async function resolveComponent(component, arg){
   if(typeof resolvedComponent !== 'string'){
     throw('A component must return a string');
   }
-  
+
   return checkForObjectString(resolvedComponent);
 }
 function isFetcher(parsedComponent){
@@ -569,8 +569,10 @@ function executeFallback(value){
     const fallback = document.createElement('div');
     fallback.id = 'render-fallback';
     const content = `${(modifiedComponent && fetcherAttributes.componentId) ? modifiedComponent(targetComponent.id): 'Loading...'}`;
+    
+    const resolvedDefaultFallback = !component && fetcherAttributes['fallback'] ? fetcherAttributes['fallback'] : content;
 
-    fallback.innerHTML = content;
+    fallback.innerHTML = resolvedDefaultFallback ;
     fetcherAttributes.action == 'prepend' ? targetComponent.prepend(fallback) : targetComponent.append(fallback);
     return true;
   };
@@ -733,12 +735,13 @@ function callFunctionWithElementsAndData(func, anchors, data) {
       return func($purify(data));
     } 
     const elements = typeof anchors !== 'string' ? anchors : $select(anchors);
+
     const result = !data ? func(elements) : func(elements, $purify(data));
     return result;
   }
   throw(`There is an error in ${func.name ?? func} or the first argument passed to $trigger is not a function`);
 }
-function $trigger(func, anchors, data){ 
+function $trigger(func, anchors, data){
   try {
     if(isBrowser() && typeof document !== 'undefined'){
       if(document.readyState === 'complete'){

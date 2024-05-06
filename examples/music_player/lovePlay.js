@@ -505,7 +505,7 @@ const Songs = ({songs}) => {
     <div 
       id="songs" 
       data-replace="#music-list"
-      data-fallback="Loading"
+      data-fallback="Loading..."
       >
       <div 
         style="border: 1px solid silver; 
@@ -571,19 +571,22 @@ function Loading(id){
 const App = ({songs, toggle}) => {
   return `
     <div id="main">
-      <Header toggle=${toggle} />
-      <article>
-        <Playlist songs={songs} />
-        <Player songs={songs} />
-        <Overlay toggle=${toggle} />
-      </article>
+      <Header toggle="${toggle}" />
+        <article>
+          <Playlist songs={songs} />
+          <Player songs={songs} />
+          <Overlay toggle=${toggle} />
+        </article>
+    </div>
+    <div id="main">
+      <Notes />
     </div>
   `;
 }
 
 $register(
     Header, Player, Playlist, Play, CurrentSong,
-    CurrentSongInformation, SeekControl, ProgressIndicator, Volume, Controller, Repeat, Previous, Next, Shuffle, Songs, Audio, Overlay, Loading
+    CurrentSongInformation, SeekControl, ProgressIndicator, Volume, Controller, Repeat, Previous, Next, Shuffle, Songs, Audio, Overlay, Loading, Notes
 )
 
 globalThis['appState'] = appState;
@@ -674,10 +677,10 @@ function Notes({notes=[{text:'', id:0}], READ=true}= {}){
 
   const nextNoteId = notes[0].id + 1;
   const props = {notes: [{text: '', id: nextNoteId}], READ:false};
+
   const saveNote = (element, createdNotes) => {
-    const notes = [...createdNotes, {text: element.value, id: element.id}];
+    const notes = [...createdNotes, {text: element.textContent, id: Number(element.id + 1)}];
     const savedNotes = localStorage.setItem('notes', JSON.stringify(notes));
-    //code to save the notes on the server.
   }
 
   return `
@@ -693,7 +696,7 @@ function Notes({notes=[{text:'', id:0}], READ=true}= {}){
               <div
                 id="${note.id}"
                 contenteditable=""  
-                onblur="$trigger(${saveNote}, 'note-${note.id}', {createdNotes})" 
+                onblur="$trigger(${saveNote},this, {createdNotes})" 
               > 
                 ${note.text}
               </div>
