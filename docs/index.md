@@ -4,10 +4,10 @@ layout: home
 # Hero section
 hero:
   name: $render.jsx
-  text: Cross-platform JSX
+  text: Cross-platform rendering...
   image:
     src: /logo-big.svg
-    alt: $render.jsx logo
+    alt: $render.jsx logo <$/>
   tagline: Enjoy stupid-simple JSX in browsers and servers with vanilla JavaScript.
   actions:
     - theme: brand
@@ -20,17 +20,29 @@ hero:
 # Features section
 features:
   - icon: ⚡️
+    title: Faster than them
+    details: $render.jsx is faster than all current JavaScript UI frameworks.
+  - icon: ⚡️
     title: Client & server rendering
-    details: Render JavaScript components in browsers and servers without a virtual DOM or tagged templates.
+    details: Render UIs in browsers and servers without a virtual DOM or tagged templates.
   - icon: 🎉
-    title: Target re-rendering
-    details: Re-render only the target component.
-  - icon: 🔥
     title: No-build JSX
-    details: Pre-render with the speed of light on the server.
+    details: Pre-render UIs with the speed of light on the server.
+  - icon: 🔥
+    title: Adaptable components
+    details: Adapt JSX components to your needs with ease.
   - icon: 🎀
     title: Works everywhere
     details: It works with any JavaScript runtime - client or server.
+  - icon: 🎉
+    title: Easy integration
+    details: It works seamlessly with Ruby, Laravel, Django and others.
+  - icon: 🔥
+    title: Native SEO & accessibility
+    details: No workaround is needed for basic SEO and accessibility. It just works.
+  - icon: 🎀
+    title: Copy-and-pastable
+    details: Copy and paste components and utilities without stress.
 
 # Meta property
 head:
