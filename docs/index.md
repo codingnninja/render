@@ -6,8 +6,8 @@ hero:
   name: $render.jsx
   text: Cross-platform rendering...
   image:
-    src: /logo-big.svg
-    alt: $render.jsx logo <$/>
+    src: /render-logo.png
+    alt: $render.jsx logo <$>
   tagline: Enjoy stupid-simple JSX in browsers and servers with vanilla JavaScript.
   actions:
     - theme: brand
