@@ -429,7 +429,7 @@ async function callComponent(element) {
       return resolvedComponent;
     } 
   } catch (error) {
-    console.error(`${error} in ${element.tagName}`);
+    console.error(`${error} at ${globalThis[element.tagName]}`);
   }
 };
 
@@ -509,7 +509,7 @@ function isInitialLetterUppercase(func, context) {
       const result = await processJSX(sanitizeOpeningTagAttributes(resolvedComponent));
       return result;
     } catch (error) {
-      console.error(`${error} in ${component.name}()`);
+      console.error(`${error} in ${globalThis[component.name]}`);
     }
   }
 
