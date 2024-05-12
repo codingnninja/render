@@ -131,6 +131,7 @@ const autopilotMode = (audio, song) => {
 }
 
 const appState = {
+  deviceSongs: [],
   songs,
   getSong,
   autopilotMode,
@@ -159,25 +160,31 @@ const Player = ({songs}) => {
       </div>
   `;
 }
+
 const Playlist = ({songs}) => {
   const props = {songs};
   return `
-      <div class="playlist" id="playlist">
-        <button class=""
-          onclick="$render(Songs, {props})"
+      <div class="playlist" id="playlist" >
+        <div style="display:flex; flex-direction: row; gap:5px; justify-content:center">
+          <button class="btn-icon playing ${!songs[0].isFromMyDevice ? 'play-active' : 'active'}"
+          onclick="$render(Playlist, {props})"
+          style="width: 50px; height: 50px;"
           >
-            Latest songs
-        </button>
-        <button 
-          class=""
-          onclick="$render()"
+            Latest
+          </button> 
+          <button 
+          class="btn-icon playing ${!songs[0].isFromMyDevice ? 'active' : 'play-active'}"
+          onclick="$render(Playlist, {props})"
+          style="width: 50px; height: 50px;"
           >
-            pause
+            Mine
           </button>
-          <Songs songs=${stringify(songs)}/>
+        </div><br>
+        ${songs ? `<Songs songs=${stringify(songs)}/>`: `<button onclick="$render(UploadSongsFromDevice)"> Load songs</button>`}
       </div>
   `;
 }
+
 const Overlay = ({toggle}) => {
   return `
       <div class="overlay" onclick="$trigger(${toggle})">
@@ -451,7 +458,7 @@ const Audio = ({song}) => {
   
   return `
     <div id="${song.id}">
-      <input type="checkbox" name="select-song" id="check-${songId}"     class="selected-songs" ${ song.isChecked ? 'checked' : ''}>
+      <input type="checkbox" name="select-song" id="check-${songId}"     class="selected-songs ${ song.isFromMyDevice ? 'hidden' : ''}" ${ song.isChecked ? 'checked' : ''}>
       <button 
         class="music-item ${song.isPlaying ? 'playing' : ''}"
         id='playing-${song.id}' 
@@ -503,19 +510,19 @@ const Songs = ({songs}) => {
   
   return `
     <div 
-      id="songs" 
-      data-replace="#music-list"
-      data-fallback="Loading..."
-      >
-      <div 
-        style="border: 1px solid silver; 
-        text-align:center; 
-        border-radius: 8px"
-        onclick="$trigger(${downloadAll})"
-      >
-        <span class="material-symbols-rounded active">download</span> all
-      </div>
-      <span id="selection-error">No song selected</span><br>
+      id="songs">
+      ${
+        !songs[0].isFromMyDevice ? `
+          <div 
+            style="border: 1px solid silver; 
+            text-align:center; 
+            border-radius: 8px"
+            onclick="$trigger(${downloadAll})"
+          >
+            <span class="material-symbols-rounded active">download</span> all
+          </div>
+        <span id="selection-error">No song selected</span><br>` : ''
+      }
       <div id="music-list" class="music-list">
         ${songList}
       </div>
@@ -572,13 +579,11 @@ const App = ({songs, toggle}) => {
   return `
     <div id="main">
       <Header toggle="${toggle}" />
-        <article>
-          <Playlist songs={songs} />
-          <Player songs={songs} />
-          <Overlay toggle=${toggle} />
-        </article>
-    </div>
-    <div id="main">
+      <article>
+        <Playlist songs={songs} />
+        <Player songs={songs} />
+        <Overlay toggle=${toggle} />
+      </article>
       <Notes />
     </div>
   `;
@@ -586,7 +591,7 @@ const App = ({songs, toggle}) => {
 
 $register(
     Header, Player, Playlist, Play, CurrentSong,
-    CurrentSongInformation, SeekControl, ProgressIndicator, Volume, Controller, Repeat, Previous, Next, Shuffle, Songs, Audio, Overlay, Loading, Notes
+    CurrentSongInformation, SeekControl, ProgressIndicator, Volume, Controller, Repeat, Previous, Next, Shuffle, Songs, Audio, Overlay, Loading, Notes, UploadSongsFromDevice
 )
 
 globalThis['appState'] = appState;
@@ -594,83 +599,79 @@ globalThis['appState'] = appState;
 const a = await $render(App, {songs, toggle});
 // console.log(a);
 
-if(a){
-  const [uploadSongsButton, audioList] = $select('#uploadSongsButton, #audioList');
-  console.log(uploadSongsButton, audioList);
-    uploadSongsButton.addEventListener('click', async () => {
+function saveSongs(songs){
+  let storedSongs = localStorage.getItem('lovePlay') ? JSON.parse(localStorage.getItem('lovePlay')) : [];
+  let latestSongs;
 
-    let selectedFolderHandle = await window.showDirectoryPicker(); 
-      try {
-        audioList.innerHTML = ''; // Clear previous audio elements
-        await scanFiles(selectedFolderHandle);
-      } catch (err) {
-        console.error('Error scanning files:', err);
-      }
-    });
-  
-    function saveFile(file){
-      let storedFile = localStorage.getItem('lovePlay') ? localStorage.getItem('lovePlay') : '';
-      let lovePlay = {};
-      if(storedFile){
-        storedFile[file.name] = file;
-        lovePlay = localStorage.setItem('lovePlay', storedFile);
-      }
-      return lovePlay;
-    }
-    async function scanFiles(directoryHandle) {
-      let songs = [];
-      let song = {};
-      let depth = 1;
-      for await (const entry of directoryHandle.values()) {
-        if (entry.kind === 'file') {
-          if (entry.name.endsWith('.mp3') || entry.name.endsWith('.wav') || entry.name.endsWith('.ogg')) {
-            const file = await entry.getFile();
-            const objectURL = URL.createObjectURL(file);
-            song.musicPath = objectURL;
-            song.id = depth;
-            songs.push(song);
-            $render(Songs, {songs});
-            const audioElement = document.createElement('audio');
-            audioElement.src = objectURL;
-            audioElement.controls = true;
-            audioList.appendChild(audioElement);
-            
-            console.log(song);
-            jsmediatags.read(file, {
-              onSuccess: function(tag) {
-                const artist = tag.tags.artist || 'Unknown Artist';
-                song.artist = artist;
-                const title = tag.tags.title || 'Unknown Title';
-                song.title = title;
-                const year = tag.tags.year || 'Unknown Year';
-                song.year = year;
-                const metadataDiv = document.createElement('div');
-                metadataDiv.innerHTML = `<strong>Title:</strong> ${title}<br><strong>Artist:</strong> ${artist}<br><strong>Year:</strong> ${year}`;
-                audioList.appendChild(metadataDiv);
-  
-                if (tag.tags.picture) {
-                  const picture = tag.tags.picture;
-                  const base64String = btoa(String.fromCharCode.apply(null, picture.data));
-                  const imgElement = document.createElement('img');
-                  imgElement.src = `data:${picture.format};base64,${base64String}`;
-                  song.posterUrl = imgElement.src;
-                  audioList.appendChild(imgElement);
-                }
-                songs.push(song);
-              },
-              onError: function(error) {
-                console.error('Error reading tags:', error);
-              }
-            });
-            // audioElement.play();
-          }
-        } else if (entry.kind === 'directory') {
-          await scanFiles(entry);
-        }
-        depth++;
-      }
-    }
+  if(storedSongs.length !==0){
+    storedSongs[file.name] = file;
+    latestSongs = [...songs, ...storedSongs]
+    localStorage.setItem('lovePlay', JSON.stringify(latestSongs));
+    return latestSongs;
   }
+  return songs;
+}
+async function UploadSongsFromDevice () {
+  async function scanFiles(directoryHandle) {
+    let songs = [];
+    let song = {};
+    let depth = 1;
+    for await (const entry of directoryHandle.values()) {
+      if (entry.kind === 'file') {
+        if (entry.name.endsWith('.mp3') || entry.name.endsWith('.wav') || entry.name.endsWith('.ogg')) {
+          const file = await entry.getFile();
+          const objectURL = URL.createObjectURL(file);
+          song.musicPath = objectURL;
+          song.isFromMyDevice = true;
+          song.id = depth;
+          songs.push(song);
+          $render(Playlist, {songs});
+          const audioElement = document.createElement('audio');
+          audioElement.src = objectURL;
+          audioElement.controls = true;
+          audioList.appendChild(audioElement);
+          
+          console.log(song);
+          jsmediatags.read(file, {
+            onSuccess: function(tag) {
+              const artist = tag.tags.artist || 'Unknown Artist';
+              song.artist = artist;
+              const title = tag.tags.title || 'Unknown Title';
+              song.title = title;
+              const year = tag.tags.year || 'Unknown Year';
+              song.year = year;
+              const metadataDiv = document.createElement('div');
+              metadataDiv.innerHTML = `<strong>Title:</strong> ${title}<br><strong>Artist:</strong> ${artist}<br><strong>Year:</strong> ${year}`;
+              audioList.appendChild(metadataDiv);
+  
+              if (tag.tags.picture) {
+                const picture = tag.tags.picture;
+                const base64String = btoa(String.fromCharCode.apply(null, picture.data));
+                const imgElement = document.createElement('img');
+                song.posterUrl = `data:${picture.format};base64,${base64String}`;
+                imgElement.src = song.posterUrl;
+                audioList.appendChild(imgElement);
+              }
+              songs.push(song);
+            },
+            onError: function(error) {
+              console.error('Error reading tags:', error);
+            }
+          });
+          // audioElement.play();
+        }
+      } else if (entry.kind === 'directory') {
+        await scanFiles(entry);
+      }
+      depth++;
+    }
+    return songs;
+  }
+
+  let selectedFolderHandle = await window.showDirectoryPicker(); 
+  const songsFromDevice = await scanFiles(selectedFolderHandle);
+  return ``;
+}
 
 function Notes({notes=[{text:'', id:0}], READ=true}= {}){
   const createdNotes = (READ && localStorage.getItem('notes')) ? JSON.parse(localStorage.getItem('notes')) : notes;
@@ -724,3 +725,5 @@ const AddTodoForm = () => {
     ${nextFormId ? '' : '<span onclick>plus</span>'}
   `;
 }
+
+//fix $trigger not seeing props made with {createNotes} instaead of ${stringify(createNotes)}

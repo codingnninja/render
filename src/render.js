@@ -409,11 +409,10 @@ async function callComponent(element) {
   
   try {
     const component = globalThis[element.tagName];
-    const modifiedComponent = makeFunctionFromString(component.toString());
     const children = element.children;
     let props = element.props;
     if(Object.keys(props).length === 0 && !element.children) {
-      return checkForObjectString(modifiedComponent());
+      return checkForObjectString(component());
     } else {
      /*  if(isObject(props) && 
          isObject(props[Object.keys(props)[0]]) &&
@@ -425,7 +424,7 @@ async function callComponent(element) {
         props.children = children;
       }
 
-      const calledComponent = checkForObjectString(modifiedComponent(props));
+      const calledComponent = checkForObjectString(component(props));
       const resolvedComponent = isPromise(calledComponent) ? await calledComponent : calledComponent;
       return resolvedComponent;
     } 
@@ -579,7 +578,7 @@ function executeFallback(value){
 }
 
 function removeFallback(target){
-  if(!target){ return false }
+  if(target){ return false }
   const fallback = document.querySelector(`${target}>#render-fallback`);
   fallback.remove();
   return true
@@ -640,11 +639,11 @@ function deSanitizeOpeningTagAttributes(tag) {
 
   const parser = new DOMParser();
   const resolvedComponent = await resolveComponent(component, arg);
+  if(!resolvedComponent) {return resolvedComponent };
+
   let processedComponent = await processJSX(
     sanitizeOpeningTagAttributes(resolvedComponent)
   );  
-  
-  if(!processedComponent) { return processedComponent }
 
   const componentEl = parser.parseFromString(processedComponent, "text/html");
   const parsedComponent = componentEl.querySelector("body > div");
@@ -720,7 +719,7 @@ function $register(...args) {
     if(typeof component !== 'function') {
       throw('Only function is expected');
     }
-    globalThis[component.name] = component;
+    globalThis[component.name] = makeFunctionFromString(component.toString());
     depth++;
   }
   return globalThis;

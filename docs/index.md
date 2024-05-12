@@ -7,8 +7,8 @@ hero:
   text: Cross-platform JSX
   image:
     src: /logo-big.svg
-    alt: Adocs logo
-  tagline: Enjoy pure JSX in browsers and servers without struggles. It is stupid simple.
+    alt: $render.jsx logo
+  tagline: Enjoy stupid-simple JSX in browsers and servers with vanilla JavaScript.
   actions:
     - theme: brand
       text: Get Started
@@ -21,10 +21,10 @@ hero:
 features:
   - icon: ⚡️
     title: Client & server rendering
-    details: Render JavaScript JSX components in browsers and servers with ease.
+    details: Render JavaScript components in browsers and servers without a virtual DOM or tagged templates.
   - icon: 🎉
     title: Target re-rendering
-    details: Re-render only the component users interact with.
+    details: Re-render only the target component.
   - icon: 🔥
     title: No-build JSX
     details: Pre-render with the speed of light on the server.
