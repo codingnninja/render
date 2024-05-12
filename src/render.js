@@ -429,7 +429,7 @@ async function callComponent(element) {
       return resolvedComponent;
     } 
   } catch (error) {
-    console.error(`${error} at ${globalThis[element.tagName]}`);
+    console.error(`${error} in ${globalThis[element.tagName]}`);
   }
 };
 
