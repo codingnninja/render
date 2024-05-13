@@ -1,14 +1,14 @@
 export default {
-  title: "Adocs",
-  description: "An awesome docs template built by me",
+  title: "$render",
+  description: "Enjoy stupid-simple JSX",
   lang: 'en-US',
   cleanUrls: true,
   // If this is disabled, when building it it will give deadlink errors if your markdown has the wrong links
   ignoreDeadLinks: true,
   
   themeConfig: {
-    logo: "/logo.svg",
-    siteTitle: "Adocs",
+    logo: "/render-logo.png",
+    siteTitle: "$render",
     search: {
       provider: "local",
     },
@@ -78,7 +78,7 @@ export default {
     },
     footer: {
       message: "Released under the MIT License.",
-      copyright: "Copyright © 2024-present Adocs",
+      copyright: "Copyright © 2024-present @render.jsx",
     },
     markdown: {
       theme: "material-palenight",

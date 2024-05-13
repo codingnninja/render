@@ -67,7 +67,7 @@ head:
   - - link
     - rel: icon
       type: image/svg
-      href: logo.svg
+      href: render-logo.png
 ---
 
 <!-- Custom home layout -->

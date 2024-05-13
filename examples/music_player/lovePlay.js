@@ -180,7 +180,7 @@ const Playlist = ({songs}) => {
             Mine
           </button>
         </div><br>
-        ${songs ? `<Songs songs=${stringify(songs)}/>`: `<button onclick="$render(UploadSongsFromDevice)"> Load songs</button>`}
+        ${!songs ? `<Songs songs=${stringify(songs)}/>`: `<button onclick="$render(UploadSongsFromDevice)"> Load songs</button>`}
       </div>
   `;
 }
