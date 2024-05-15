@@ -577,7 +577,7 @@ function executeFallback(value){
 }
 
 function removeFallback(target){
-  if(target){ return false }
+  if(!target){ return false }
   const fallback = document.querySelector(`${target}>#render-fallback`);
   fallback.remove();
   return true

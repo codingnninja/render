@@ -584,7 +584,7 @@ const AddTodoForm = (id=0) => {
     <div 
       id="todo-form"
       class="todo-form" 
-      data-append="todo-form"
+      data-append="#todo-form"
     >
       <input id="${id}">
     </div>
