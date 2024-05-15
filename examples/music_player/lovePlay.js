@@ -180,7 +180,10 @@ const Playlist = ({songs}) => {
             Mine
           </button>
         </div><br>
-        ${songs ? `<Songs songs=${stringify(songs)}/>`: `<button onclick="$render(UploadSongsFromDevice)"> Load songs</button>`}
+        <small>
+        Note: Choose /storage or /disk to load from all files.
+        </small>
+        ${!songs ? `<Songs songs=${stringify(songs)}/>`: `<button onclick="$render(UploadSongsFromDevice)"> Load songs</button>`}
       </div>
   `;
 }
@@ -575,6 +578,19 @@ function Loading(id){
   return `<div id="render-fallback">AB Loading...</div>`
 }
 
+const AddTodoForm = (id=0) => {
+  alert(id);
+  return `
+    <div 
+      id="todo-form"
+      class="todo-form" 
+      data-append="todo-form"
+    >
+      <input id="${id}">
+    </div>
+    <button onclick="$render(AddTodoForm, ${id+1})">plus</button>
+  `;
+}
 const App = ({songs, toggle}) => {
   return `
     <div id="main">
@@ -584,14 +600,14 @@ const App = ({songs, toggle}) => {
         <Player songs={songs} />
         <Overlay toggle=${toggle} />
       </article>
-      <Notes />
+      <AddTodoForm />
     </div>
   `;
 }
 
 $register(
     Header, Player, Playlist, Play, CurrentSong,
-    CurrentSongInformation, SeekControl, ProgressIndicator, Volume, Controller, Repeat, Previous, Next, Shuffle, Songs, Audio, Overlay, Loading, Notes, UploadSongsFromDevice
+    CurrentSongInformation, SeekControl, ProgressIndicator, Volume, Controller, Repeat, Previous, Next, Shuffle, Songs, Audio, Overlay, Loading, Notes, UploadSongsFromDevice, AddTodoForm
 )
 
 globalThis['appState'] = appState;
@@ -710,19 +726,51 @@ function Notes({notes=[{text:'', id:0}], READ=true}= {}){
   `;
 }
 
-const AddTodoForm = () => {
-  const latestForm = $select('.todo-form:>last-child');
-  const nextFormId = latestForm ? latestForm.id + 1 : 0; 
-  return `
-    <div 
-      class="todo-form" 
-      id="todo-form"
-      data-append="todo-form"
-      data-use="inner"
-    >
-      <input id="${nextFormId}">
+function Button({ id, classes, children, status }){
+  const flash = {
+    0:{
+      value: 'uploading...',
+      color: ''
+    },
+    1:{
+      value: 'loading...',
+      color: ''
+    },
+    2:{
+      value: 'downloading...',
+      color: ''
+    },
+    3:{
+      value: 'processing...',
+      color: ''
+    },
+    4:{
+      value: 'deleting...',
+      color: ''
+    },
+    5:{
+      value: 'completed!',
+      color: ''
+    },
+    6:{
+      value: 'done!',
+      color: ''
+    }
+  } 
+
+  const props = {id, classes, children: flash[status].value, status};
+
+  return`
+    <div id="${id}">
+      <button 
+        class="${classes}" 
+        ${status && 'disabled=""'}
+        onchange="$render(Button, {props})"
+      >
+        ${status && '<img src"" alt="loading...">'} 
+        ${children}
+      </button>
     </div>
-    ${nextFormId ? '' : '<span onclick>plus</span>'}
   `;
 }
 

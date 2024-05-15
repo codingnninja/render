@@ -560,9 +560,8 @@ function extractFetcherAttributes(functionString){
 
 function executeFallback(value){  
   const fetcherAttributes = extractFetcherAttributes(value.toString());
-  if (fetcherAttributes.componentId){ 
+  if (fetcherAttributes.componentId && fetcherAttributes.componentId.startsWith('#')){ 
     const targetComponent = document.querySelector(fetcherAttributes.componentId);
-    
     const component = globalThis[fetcherAttributes['fallback']];
     const modifiedComponent = component ? makeFunctionFromString(component.toString()) : '';
     const fallback = document.createElement('div');
