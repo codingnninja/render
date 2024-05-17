@@ -1,6 +1,6 @@
 let _$;
 
-function removeComments(code) {
+function removeJsComments(code) {
   return code.replace(/\/\/.*|\/\*[\s\S]*?\*\//g, ' ');
 }
 function sanitizeString(str) {
@@ -31,7 +31,7 @@ function deSanitizeString(str) {
 
 const replacer = (key, value) => {
   if (typeof value === 'function') {
-    const sanitizedString = sanitizeString(removeComments(value.toString()))
+    const sanitizedString = sanitizeString(normalizeHTML(value.toString()))
     return `__function__:${sanitizedString}`;
   } else if (typeof value === 'symbol') {
     return `__symbol__${String(value)}`;
@@ -295,7 +295,9 @@ function normalizeHTML(str){
     getBodyIfHave(
       removeBreakLine(
         removeComment(
-          removeScript(str)
+          removeJsComments(
+            removeScript(str)
+          )
         )
       )
     )
@@ -620,12 +622,12 @@ function sanitizeOpeningTagAttributes(tag) {
 }
 function deSanitizeOpeningTagAttributes(tag) {
   const regex = /(\w+)=("[^"]*"|'[^']*')/g;
-    return tag.replace(regex, (match, attributeName, attributeValue) => {
+    return normalizeHTML(tag.replace(regex, (match, attributeName, attributeValue) => {
       const sanitizedValue = attributeValue
                              .replace(/&lt;/g, '<')
                              .replace(/&gt;/g, '>');
       return `${attributeName}=${sanitizedValue}`;
-  });
+  }));
 }
 
 /**

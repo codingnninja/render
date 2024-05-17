@@ -545,6 +545,7 @@ const debounce = (func, timeout=300) => {
 }
 
 const toggle = (event) => {
+  console.log('I ma here'); /* comment*/
   event && event.preventDefault();
   const [playlist, overlay] = $select('#playlist, .overlay');
   if(playlist.classList.contains('active')){
