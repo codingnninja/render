@@ -20,29 +20,29 @@ hero:
 # Features section
 features:
   - icon: ⚡️
-    title: Faster than them
-    details: $render.jsx is faster than all current JavaScript UI frameworks.
+    title: Better than them
+    details: $render.jsx is faster, simpler and more productive than all current JavaScript UI frameworks.
   - icon: ⚡️
     title: Client & server rendering
     details: Render UIs in browsers and servers without a virtual DOM or tagged templates.
   - icon: 🎉
     title: No-build JSX
-    details: Pre-render UIs with the speed of light on the server.
+    details: Pre-render UIs with the speed of light on the server. It is magical.
   - icon: 🔥
     title: Adaptable components
-    details: Adapt JSX components to your needs with ease.
+    details: Adapt JSX components to your needs with ease. It is extendable.
   - icon: 🎀
     title: Works everywhere
-    details: It works with any JavaScript runtime - client or server.
+    details: It works with any JavaScript runtime - client or server. No need to "use client or server".
   - icon: 🎉
     title: Easy integration
-    details: It works seamlessly with Ruby, Laravel, Django and others.
+    details: It works seamlessly with Ruby, Laravel, Django and others. It is universal.
   - icon: 🔥
     title: Native SEO & accessibility
     details: No workaround is needed for basic SEO and accessibility. It just works.
   - icon: 🎀
     title: Copy-and-pastable
-    details: Copy and paste components and utilities without stress.
+    details: Copy and paste components and utilities without stress. No more stress.
 
 # Meta property
 head:
