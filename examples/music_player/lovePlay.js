@@ -115,9 +115,8 @@ const resolveVolume = (audio, song) => {
 }
 
 const playSelectedSong = (element, index) => {
-  appState.selected = true;
+  console.log('I get here');
   const selectedSong = appState.getSong(index, element);
-  setToPlaying(selectedSong);
   $render(Repeat)
 }
 const autopilotMode = (audio, song) => {
@@ -181,9 +180,9 @@ const Playlist = ({songs}) => {
           </button>
         </div><br>
         <small>
-        Note: Choose /storage or /disk to load from all files.
+        ${!songs ? 'Note: Choose /storage or /disk to load from all files.' : ''}
         </small>
-        ${!songs ? `<Songs songs=${stringify(songs)}/>`: `<button onclick="$render(UploadSongsFromDevice)"> Load songs</button>`}
+        ${songs ? `<Songs songs=${stringify(songs)}/>`: `<button onclick="$render(UploadSongsFromDevice)"> Load songs</button>`}
       </div>
   `;
 }
@@ -579,16 +578,18 @@ function Loading(id){
 }
 
 const AddTodoForm = (id=0) => {
-  alert(id);
+  const todoForm = $select(`#todo-form>:nth-last-child(2)`);
+  const nextId = todoForm ? Number(todoForm.dataset.id ) + 1 : (id + 1);
+
   return `
     <div 
       id="todo-form"
       class="todo-form" 
       data-append="#todo-form"
     >
-      <input id="${id}">
+      <input id="input-${nextId}" data-id="${nextId}">
     </div>
-    <button onclick="$render(AddTodoForm, ${id+1})">plus</button>
+    <button onclick="$render(AddTodoForm)">plus</button>
   `;
 }
 const App = ({songs, toggle}) => {
@@ -601,6 +602,7 @@ const App = ({songs, toggle}) => {
         <Overlay toggle=${toggle} />
       </article>
       <AddTodoForm />
+      <Notes />
     </div>
   `;
 }
@@ -692,11 +694,16 @@ async function UploadSongsFromDevice () {
 function Notes({notes=[{text:'', id:0}], READ=true}= {}){
   const createdNotes = (READ && localStorage.getItem('notes')) ? JSON.parse(localStorage.getItem('notes')) : notes;
 
-  const nextNoteId = notes[0].id + 1;
+  const todoForm = $select(`#notes>:nth-last-child(2)`);
+  const nextNoteId= todoForm ? Number(todoForm.dataset.id ) + 1 : (notes[0].id + 1);
   const props = {notes: [{text: '', id: nextNoteId}], READ:false};
 
   const saveNote = (element, createdNotes) => {
-    const notes = [...createdNotes, {text: element.textContent, id: Number(element.id + 1)}];
+    const storage = new Set(createdNotes);
+    const note = {text: element.textContent, id: Number(element.id + 1)};
+    storage.has(note) && storage.delete(note);
+
+    const notes = createdNotes.set()
     const savedNotes = localStorage.setItem('notes', JSON.stringify(notes));
   }
 
