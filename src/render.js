@@ -72,7 +72,7 @@ function formatKeyValuePairs(input) {
 
 //replace $trigger first argument with ${name} if it has {name}
 function normalizePropPlaceholderAndUtilInTrigger(input) {
-  const regex = /\$trigger\(([^,$]+)(?:,([^,$]+))?(?:,\s*{([^{}$]+)}\s*)?\)/g;/* \{([^{}]+)\}\) */
+  const regex = /\s*\$trigger\s*\(\s*([^,]+)\s*(?:,\s*([^,$]+)\s*)?(?:,\s*{\s*([^{}$]+)\s*}\s*)?\s*\)/g;/* \{([^{}]+)\}\) */
   return input.replace(regex, (_, arg1, arg2, value) => {
     const updatedArg1 = arg1.startsWith('{') ? `$${arg1}`: arg1;
     if(value === undefined) {
@@ -613,12 +613,12 @@ function stopIfNotStartWithHash(selector, insertionType){
 
 function sanitizeOpeningTagAttributes(tag) {
   const regex = /(\w+)=("[^"]*"|'[^']*')/g;
-    return tag.replace(regex, (match, attributeName, attributeValue) => {
+    return normalizeHTML(tag.replace(regex, (match, attributeName, attributeValue) => {
       const sanitizedValue = attributeValue
                              .replace(/</g, '&lt;')
-                             .replace(/>/g, '&gt;');
+                             .replace(/>/g, '&gt;');//make this to not affect arrow function's '=>' and if it works sanitizeString should be enough
       return `${attributeName}=${sanitizedValue}`;
-  });
+  }));
 }
 function deSanitizeOpeningTagAttributes(tag) {
   const regex = /(\w+)=("[^"]*"|'[^']*')/g;
@@ -699,7 +699,7 @@ function replaceValueWithStringify(functionString) {
   });
 
   // Todo: Make sure the argument optional
-  func = func.replace(/(\w+)="\$render\(([^{}]+)\, \{([^{}]+)\}\)"/g, (match, key, component, prop) => {
+  func = func.replace(/(\w+)="\s*\$render\s*\(([^{}]+)\,\s*\{\s*([^{}]+)\s*\}\s*\)\s*"/g, (match, key, component, prop) => {
     return key + '="' + '$render(' + component + ',' + "'${stringify(" + prop + ")}')" + '"';  
   });
   return normalizePropPlaceholderAndUtilInTrigger(func);

@@ -693,21 +693,19 @@ async function UploadSongsFromDevice () {
 
 function Notes({notes=[{text:'', id:0}], READ=true}= {}){
   const createdNotes = (READ && localStorage.getItem('notes')) ? JSON.parse(localStorage.getItem('notes')) : notes;
-
-  const todoForm = $select(`#notes>:nth-last-child(2)`);
-  const nextNoteId= todoForm ? Number(todoForm.dataset.id ) + 1 : (notes[0].id + 1);
+  const noteForm = $select(`#notes>:nth-last-child(2)`);
+  const nextNoteId= noteForm ? Number(noteForm.dataset.id ) + 1 : (notes[0].id + 1);
+  console.log(nextNoteId);
   const props = {notes: [{text: '', id: nextNoteId}], READ:false};
-
   const saveNote = (element, createdNotes) => {
     const storage = new Set(createdNotes);
     const note = {text: element.textContent, id: Number(element.id + 1)};
     storage.has(note) && storage.delete(note);
-
-    const notes = createdNotes.set()
+    
+    const notes = createdNotes.set();
     const savedNotes = localStorage.setItem('notes', JSON.stringify(notes));
   }
-
-  return `
+    return `
     <div id="notes-containter">
       <div
         id="notes"
@@ -718,9 +716,10 @@ function Notes({notes=[{text:'', id:0}], READ=true}= {}){
           createdNotes.map(note => {
             return `
               <div
-                id="${note.id}"
+                id="${nextNoteId}"
                 contenteditable=""  
-                onblur="$trigger(${saveNote},this, {createdNotes})" 
+                onblur="$trigger({ saveNote } , this, { createdNotes })" 
+                data-id="${nextNoteId}"
               > 
                 ${note.text}
               </div>
@@ -728,7 +727,7 @@ function Notes({notes=[{text:'', id:0}], READ=true}= {}){
           }) : 'No note found'
         }
       </div>
-      <button onclick="$render(Notes, {props})">Add a note</button>
+      <button onclick="$render( Notes, { props })">Add a note</button>
     </div>
   `;
 }
