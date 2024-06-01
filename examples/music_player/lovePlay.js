@@ -632,51 +632,34 @@ function saveSongs(songs){
 async function UploadSongsFromDevice () {
   async function scanFiles(directoryHandle) {
     let songs = [];
-    let song = {};
     let depth = 1;
     for await (const entry of directoryHandle.values()) {
       if (entry.kind === 'file') {
         if (entry.name.endsWith('.mp3') || entry.name.endsWith('.wav') || entry.name.endsWith('.ogg')) {
+          let song = {};
           const file = await entry.getFile();
           const objectURL = URL.createObjectURL(file);
           song.musicPath = objectURL;
           song.isFromMyDevice = true;
           song.id = depth;
-          songs.push(song);
-          $render(Playlist, {songs});
-          const audioElement = document.createElement('audio');
-          audioElement.src = objectURL;
-          audioElement.controls = true;
-          audioList.appendChild(audioElement);
-          
-          console.log(song);
+         
           jsmediatags.read(file, {
             onSuccess: function(tag) {
-              const artist = tag.tags.artist || 'Unknown Artist';
-              song.artist = artist;
-              const title = tag.tags.title || 'Unknown Title';
-              song.title = title;
-              const year = tag.tags.year || 'Unknown Year';
-              song.year = year;
-              const metadataDiv = document.createElement('div');
-              metadataDiv.innerHTML = `<strong>Title:</strong> ${title}<br><strong>Artist:</strong> ${artist}<br><strong>Year:</strong> ${year}`;
-              audioList.appendChild(metadataDiv);
+              song.artist = tag.tags.artist || 'Unknown Artist';
+              song.title = tag.tags.title || 'Unknown Title';
+              song.year = tag.tags.year || 'Unknown Year';
   
               if (tag.tags.picture) {
                 const picture = tag.tags.picture;
                 const base64String = btoa(String.fromCharCode.apply(null, picture.data));
-                const imgElement = document.createElement('img');
                 song.posterUrl = `data:${picture.format};base64,${base64String}`;
-                imgElement.src = song.posterUrl;
-                audioList.appendChild(imgElement);
               }
-              songs.push(song);
             },
             onError: function(error) {
               console.error('Error reading tags:', error);
             }
           });
-          // audioElement.play();
+          songs.push(song);
         }
       } else if (entry.kind === 'directory') {
         await scanFiles(entry);
@@ -688,6 +671,7 @@ async function UploadSongsFromDevice () {
 
   let selectedFolderHandle = await window.showDirectoryPicker(); 
   const songsFromDevice = await scanFiles(selectedFolderHandle);
+  console.log(songsFromDevice);
   return ``;
 }
 
@@ -695,15 +679,21 @@ function Notes({notes=[{text:'', id:0}], READ=true}= {}){
   const createdNotes = (READ && localStorage.getItem('notes')) ? JSON.parse(localStorage.getItem('notes')) : notes;
   const noteForm = $select(`#notes>:nth-last-child(2)`);
   const nextNoteId= noteForm ? Number(noteForm.dataset.id ) + 1 : (notes[0].id + 1);
-  console.log(nextNoteId);
+
   const props = {notes: [{text: '', id: nextNoteId}], READ:false};
+
   const saveNote = (element, createdNotes) => {
-    const storage = new Set(createdNotes);
-    const note = {text: element.textContent, id: Number(element.id + 1)};
-    storage.has(note) && storage.delete(note);
+    if(!element.textContent) return;
+    const note = {text: element.textContent, id: (Number(element.id)+1)};
+
+    if(createdNotes.length > 1){
+      const storage = new Set(createdNotes);
+    }
     
-    const notes = createdNotes.set();
-    const savedNotes = localStorage.setItem('notes', JSON.stringify(notes));
+    console.log(storage);
+    
+    // const notes = createdNotes.set();
+    // const savedNotes = localStorage.setItem('notes', JSON.stringify(notes));
   }
     return `
     <div id="notes-containter">
@@ -718,7 +708,7 @@ function Notes({notes=[{text:'', id:0}], READ=true}= {}){
               <div
                 id="${nextNoteId}"
                 contenteditable=""  
-                onblur="$trigger({ saveNote } , this, { createdNotes })" 
+                onblur="$trigger(${ saveNote } , this, { createdNotes })" 
                 data-id="${nextNoteId}"
               > 
                 ${note.text}

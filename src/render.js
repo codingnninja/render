@@ -72,7 +72,7 @@ function formatKeyValuePairs(input) {
 
 //replace $trigger first argument with ${name} if it has {name}
 function normalizePropPlaceholderAndUtilInTrigger(input) {
-  const regex = /\s*\$trigger\s*\(\s*([^,]+)\s*(?:,\s*([^,$]+)\s*)?(?:,\s*{\s*([^{}$]+)\s*}\s*)?\s*\)/g;/* \{([^{}]+)\}\) */
+  const regex = /\s*\$trigger\s*\(\s*([^,]+)\s*(?:,\s*([^,]+)\s*)?(?:,\s*{\s*([^{}$]+)\s*}\s*)?\s*\)/g;/* \{([^{}]+)\}\) */
   return input.replace(regex, (_, arg1, arg2, value) => {
     const updatedArg1 = arg1.startsWith('{') ? `$${arg1}`: arg1;
     if(value === undefined) {
@@ -809,29 +809,55 @@ function $purify(props){
 }
 
 function buildDataStructureFrom(queryString){  
-  let [selector, constraints] = queryString.split('[').filter(Boolean);
-
-  if(selector && selector.endsWith(']')){
-    selector = selector.slice(0, -1)
-  }
-  if(constraints && constraints.endsWith(']')){
-    constraints = constraints.slice(0, -1)
-  }
-  
-  if(constraints && !constraints.includes("|")){ 
-    return constraints.includes('=') ? [queryString, undefined] : [selector, constraints]; 
-  }
-
-  if(constraints && constraints.includes('|=')) return [queryString, undefined];
+  let [selector, constraints] = resolveActionAndConstraints(queryString);
 
   if(constraints === undefined){
     return [selector];
   }
 
-  constraints = constraints.split('|');
-  let params = constraints[1].split(/(\w+)(>=?|<=?|={1,2})(\w+|"")/).filter(Boolean);
-  constraints = [constraints[0], params]
+  if(/(\S+|\[\S+\])\[(\d+)\]/.test(queryString)){
+    return [selector, constraints];
+  }
+  constraints = resolveMultipleAttributes(constraints.split(','))
   return [selector, constraints];
+}
+
+function resolveActionAndConstraints(queryString){
+  const regex = /(\S+|\[\S+\])\[(\d+)\]/;
+  const match = queryString.match(regex);
+
+  if(match){
+    return [match[1], match[2]];
+  }
+
+  if(!queryString.includes('|') || queryString.includes('|=')){
+    return [queryString.trim(), undefined];
+  }
+
+  const splittedQuery = queryString.split('[').filter(Boolean);
+  if(splittedQuery.length === 2){
+    const selector = splittedQuery[0].endsWith(']') ? `[${splittedQuery[0]}` : splittedQuery[0];
+    const constraints = splittedQuery[1].split(']')[0];
+    return [selector.trim(), constraints.trim()];
+  }
+
+  const selector = `${splittedQuery[0]}[${splittedQuery[1]}`;
+  const constraints = splittedQuery[2].split(']')[0];
+  return [selector.trim(), constraints.trim()];
+}
+
+function resolveMultipleAttributes (constraints){
+
+  let processedConstraints = [];
+  let depth = 0;
+  while(depth < constraints.length){
+    let splittedConstraints = constraints[depth].split('|').filter(Boolean);
+    const [action, paramString] = splittedConstraints;
+    const param = paramString.split(/(\w+)(\!=|\-=|\+=|>=?|<=?|={1,2})(.+)/).filter(Boolean);
+    processedConstraints.push([action.trim(), param]);
+    depth++
+  }
+  return processedConstraints;
 }
  
 function $select(str, offSuperpowers = false) {
@@ -840,7 +866,7 @@ function $select(str, offSuperpowers = false) {
   }
 
   try {
-    const selectors = str.split(",");
+    const selectors = str.split(/,(?![^\[]*\])/);
     let elements = [];
     let depth = 0;
     
@@ -849,8 +875,8 @@ function $select(str, offSuperpowers = false) {
       const [selector, constraints] = buildDataStructureFrom(selectorWithConstraints);
 
       const nestedElements = _$(selector);
-      const modifiedElements = applyAction(nestedElements, constraints);
 
+      const modifiedElements = applyAction(nestedElements, constraints);
       const numberOfElementsSelected = modifiedElements === undefined ? undefined : modifiedElements.length;
       if (numberOfElementsSelected && !offSuperpowers) {
         //turn grouped elements to a real array
@@ -863,36 +889,47 @@ function $select(str, offSuperpowers = false) {
       } 
       depth++
     }
-
-    return elements.length === 1 ? elements[0] : elements;
+    return (elements && elements.length === 1) ? elements[0] : elements;
   } catch (error) {
-    console.error(`${error}. You can\'t use $select on the server or check the selector(s) '${str}' provided for validity`);
+    console.error(`Oops! Check the selector(s) '${str}' provided for validity because it seems the target is not found.`);
   }
 
 }
 
 function applyAction(elements, constraints) {
-  let action;
-  if (Array.isArray(constraints)) {
-    [action] = constraints;
-  }
-  if (typeof constraints === 'string' && elements) return elements[constraints];
+  
+  if (typeof constraints === 'string' && elements.length !== 0) return elements[constraints];
   if (!constraints && elements.length === 1) return elements[0];
   if (!constraints && elements.length > 1) return elements;
-  if (action === 'delete') {
-    return del(elements, constraints);
-  } else if(constraints !== undefined){
-    return setAttribute(elements, constraints);
+
+  let depth = 0;
+  let result = elements;
+
+  while(constraints && depth < constraints.length){
+    const [action, constraint] = constraints[depth]
+    if (action === 'delete') {
+      result = del(result, constraints[depth]);
+    } else if (action.includes('filter')) {
+      result = filter(elements, constraints[depth]);
+    } else if (constraints !== undefined){
+      result = setAttribute(result, constraints[depth]);
+    }
+    depth++;
   }
+  
+  return result;
 }
 
 const operators = {
-  '>': (key, element, value) => element.getAttribute(key) > value,
-  '<': (key, element, value) => element.getAttribute(key) < value,
-  '=': (key, element, value) => element.getAttribute(key) === value,
-  '<=': (key, element, value) => element.getAttribute(key) <= value,
-  '>=': (key, element, value) => element.getAttribute(key) >= value,
-  '!=': (key, element, value) => element.getAttribute(key) !== value,
+  'class': (action, element, value) => element.classList[action](value),
+  '>': (key, element, value) => element[key] > value,
+  '<': (key, element, value) => element[key] < value,
+  '=': (key, element, value) => element[key] === value,
+  '<=': (key, element, value) => element[key] <= value,
+  '>=': (key, element, value) => element[key] >= value,
+  '!=': (key, element, value) => element[key] !== value,
+  '+=': (key, element, value) => Number(element[key]) + Number(value),
+  '-=': (key, element, value) => Number(element[key]) + Number(value)
 }
 
 function del(elements, constraints) {
@@ -901,10 +938,15 @@ function del(elements, constraints) {
   const result = []
 
   for (let index = 0; index < elements.length; index++) {
-    if ((key === 'i' || 'index') && index == value) {
-      elements[value].remove();
-      result.push(elements[value]);
-      continue;
+    if ((key === 'i' | key === 'index')) {
+      const dummyElement = makeTag(index);
+     
+      if(operators[operator]('id', dummyElement, value)){
+        const deletedElement =  key === 'i' | key === 'index' ? elements[index] :  elements[value];
+        deletedElement.remove();
+        result.push(deletedElement);
+        continue;
+      }
     }
 
     if (operators[operator](key, elements[index], value)) {
@@ -923,12 +965,49 @@ function setAttribute(elements, constraints) {
 
   for (let i = 0; i < elements.length; i++) {
     if (key === 'class') {
-      elements[i].classList[action](value);
+      elements[i].classList[action](...value.split(" "));
       continue
-    }   
-    elements[i].setAttribute(key, value);
+    }
+  
+    if(!value){
+      elements[i][key] = ' ';
+    } else if(operator === '+=' || operator === '-=') {
+      const foundOperator = operators[operator](key, elements[i], value)
+      elements[i][key] = (foundOperator) ? foundOperator: value;
+    } else {
+      elements[i][key] = value;
+    }
   }
+
   return elements;
+}
+
+function makeTag (index) {
+  console.log(index)
+  const div = document.createElement('div');
+  div.id = index;
+  return div;
+}
+
+function filter(elements, constraints){
+  const result = [];
+  const [action, params] = constraints;
+  let [key, operator, value] = params;
+  let depth = 0;
+
+  while (depth < elements.length){
+    let element = (key === 'i' | key === 'index') ? makeTag(value) : elements[depth];
+    key = (key === 'i' | key === 'index') ? 'id' : key;
+    
+    const condition = key === 'class' ? operators[key]('contains', element, value) : operators[operator](key, element, value);
+    
+    if( (action ==='filterIn' && condition) | (action ==='filterOut' && !condition)){
+      const filteredElement = (params[0] === 'i' | params[0] === 'index') ? elements[value] : elements[depth];
+      result.push(filteredElement);
+    }
+    depth++;
+  }
+  return result.length === 1 ? result[0] : result;
 }
 
 function registerInternalUtils(){

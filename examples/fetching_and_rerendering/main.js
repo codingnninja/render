@@ -252,16 +252,17 @@ const Users = async (props) => {
   return runModel(options);
 }; */
 
-console.log($select('.post[delete|id=e3]'))
+console.log($select('.post[0], .post[add|class=rubbish]'))
 console.log($select('.post:not(#e3)'))
+console.log($select('.post[filterOut|id=e3]'))
 
 const start = performance.now();
 
-  $select(`
+  console.log($select(`
     .post[id~=e3],
     .post:not(#e3),
     .post[delete|id=e3]
-  `)
+  `));
 
 // const end = performance.now();
 // const duration = end - start;

@@ -43,8 +43,34 @@
   </head>
   <body>
     <div id="root"></div>
-    <div class="post">ayo</div>
-    <div class="post" id="e3">ope</div>
+    <div class="post" id="e2">ayo</div>
+    <button
+      id="test-btn"
+      onclick="$select('.post[delete|id=e2], #test-btn[add|textContent=loading..., add|disabled=true]')"
+    >
+      delete
+    </button>
+    <br />
+
+    <button id="test-bt" onclick="$select('#test-bt[add|textContent+=1]')">
+      0
+    </button>
+
+    <button id="test-bta" onclick="$select('#test-bta[add|textContent-=1]')">
+      0
+    </button>
+
+    <div class="post yes" id="e3">ope</div>
+
+    <div id="typing" class="fade"></div>
+    <div
+      contenteditable=""
+      onkeyup="$select('#typing[add|textContent,  remove|class=fade]')"
+      onkeydown="$select('#typing[add|textContent=typing...,  remove|class=fade]')"
+      onblur="$select('#typing[add|textContent=saved, add|class=fade]')"
+    >
+      what's on your mind
+    </div>
   </body>
 </html>
 
