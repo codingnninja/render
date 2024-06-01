@@ -921,7 +921,6 @@ function applyAction(elements, constraints) {
 }
 
 const operators = {
-  'class': (action, element, value) => element.classList[action](value),
   '>': (key, element, value) => element[key] > value,
   '<': (key, element, value) => element[key] < value,
   '=': (key, element, value) => element[key] === value,
@@ -929,7 +928,7 @@ const operators = {
   '>=': (key, element, value) => element[key] >= value,
   '!=': (key, element, value) => element[key] !== value,
   '+=': (key, element, value) => Number(element[key]) + Number(value),
-  '-=': (key, element, value) => Number(element[key]) + Number(value)
+  '-=': (key, element, value) => Number(element[key]) - Number(value)
 }
 
 function del(elements, constraints) {
