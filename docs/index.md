@@ -20,29 +20,29 @@ hero:
 # Features section
 features:
   - icon: ⚡️
-    title: Better than them
-    details: $render.jsx is faster, simpler and more productive than all current JavaScript UI frameworks.
-  - icon: ⚡️
-    title: Client & server rendering
-    details: Render UIs in browsers and servers without a virtual DOM or tagged templates.
-  - icon: 🎉
-    title: No-build JSX
-    details: Pre-render UIs with the speed of light on the server. It is magical.
-  - icon: 🔥
-    title: Adaptable components
-    details: Adapt JSX components to your needs with ease. It is extendable.
+    title: Ship fast & more
+    details: $render helps you ship fast by making hard features simple to implement. 
   - icon: 🎀
-    title: Works everywhere
-    details: It works with any JavaScript runtime - client or server. No need to "use client or server".
-  - icon: 🎉
-    title: Easy integration
-    details: It works seamlessly with Ruby, Laravel, Django and others. It is universal.
+    title: Stop burning money
+    details: It is designed to cut unnecessary operations that cost you more money. 
+  - icon: ⚡️
+    title: Scale with ease
+    details: You don't need to worry about scaling as $render is simple to use and fun to scale.
+  - icon: ⚡️
+    title: Enjoy great experience
+    details: Better life for users and developers out of the box without compromizing speed.
+  - icon: ⚡️
+    title: Simple learning curve
+    details: It is easy to learn as it makes use of everything you already know to achieve its aims.
   - icon: 🔥
     title: Native SEO & accessibility
     details: No workaround is needed for basic SEO and accessibility. It just works.
-  - icon: 🎀
-    title: Copy-and-pastable
-    details: Copy and paste components and utilities without stress. No more stress.
+  - icon: ⚡️
+    title: Be stable and flexible
+    details: Build applications that give you peace of mind to sleep at night but easy to update. 
+  - icon: 🎉
+    title: Easy integration
+    details: It works seamlessly with Ruby, Laravel, Django and others. It works everywhere.
 
 # Meta property
 head:

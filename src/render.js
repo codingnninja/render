@@ -889,6 +889,7 @@ function $select(str, offSuperpowers = false) {
       } 
       depth++
     }
+    if(elements[0].length === 0) return null;
     return (elements && elements.length === 1) ? elements[0] : elements;
   } catch (error) {
     console.error(`Oops! Check the selector(s) '${str}' provided for validity because it seems the target is not found.`);

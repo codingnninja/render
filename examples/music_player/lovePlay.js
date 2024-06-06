@@ -364,7 +364,7 @@ const Play = ({song}) => {
   const audio = $select(`#audio-${song.id}`); 
   const props = {song};
   clearInterval(appState.playingInterval);
-
+console.log(audio)
   if(audio){
     song.isPlaying = audio.paused ? true : false; 
     appState.resolveVolume(audio, song);
@@ -577,21 +577,6 @@ function Loading(id){
   return `<div id="render-fallback">AB Loading...</div>`
 }
 
-const AddTodoForm = (id=0) => {
-  const todoForm = $select(`#todo-form>:nth-last-child(2)`);
-  const nextId = todoForm ? Number(todoForm.dataset.id ) + 1 : (id + 1);
-
-  return `
-    <div 
-      id="todo-form"
-      class="todo-form" 
-      data-append="#todo-form"
-    >
-      <input id="input-${nextId}" data-id="${nextId}">
-    </div>
-    <button onclick="$render(AddTodoForm)">plus</button>
-  `;
-}
 const App = ({songs, toggle}) => {
   return `
     <div id="main">
@@ -601,15 +586,13 @@ const App = ({songs, toggle}) => {
         <Player songs={songs} />
         <Overlay toggle=${toggle} />
       </article>
-      <AddTodoForm />
-      <Notes />
     </div>
   `;
 }
 
 $register(
     Header, Player, Playlist, Play, CurrentSong,
-    CurrentSongInformation, SeekControl, ProgressIndicator, Volume, Controller, Repeat, Previous, Next, Shuffle, Songs, Audio, Overlay, Loading, Notes, UploadSongsFromDevice, AddTodoForm
+    CurrentSongInformation, SeekControl, ProgressIndicator, Volume, Controller, Repeat, Previous, Next, Shuffle, Songs, Audio, Overlay, Loading, UploadSongsFromDevice,
 )
 
 globalThis['appState'] = appState;
@@ -617,18 +600,6 @@ globalThis['appState'] = appState;
 const a = await $render(App, {songs, toggle});
 // console.log(a);
 
-function saveSongs(songs){
-  let storedSongs = localStorage.getItem('lovePlay') ? JSON.parse(localStorage.getItem('lovePlay')) : [];
-  let latestSongs;
-
-  if(storedSongs.length !==0){
-    storedSongs[file.name] = file;
-    latestSongs = [...songs, ...storedSongs]
-    localStorage.setItem('lovePlay', JSON.stringify(latestSongs));
-    return latestSongs;
-  }
-  return songs;
-}
 async function UploadSongsFromDevice () {
   async function scanFiles(directoryHandle) {
     let songs = [];
@@ -674,100 +645,3 @@ async function UploadSongsFromDevice () {
   console.log(songsFromDevice);
   return ``;
 }
-
-function Notes({notes=[{text:'', id:0}], READ=true}= {}){
-  const createdNotes = (READ && localStorage.getItem('notes')) ? JSON.parse(localStorage.getItem('notes')) : notes;
-  const noteForm = $select(`#notes>:nth-last-child(2)`);
-  const nextNoteId= noteForm ? Number(noteForm.dataset.id ) + 1 : (notes[0].id + 1);
-
-  const props = {notes: [{text: '', id: nextNoteId}], READ:false};
-
-  const saveNote = (element, createdNotes) => {
-    if(!element.textContent) return;
-    const note = {text: element.textContent, id: (Number(element.id)+1)};
-
-    if(createdNotes.length > 1){
-      const storage = new Set(createdNotes);
-    }
-    
-    console.log(storage);
-    
-    // const notes = createdNotes.set();
-    // const savedNotes = localStorage.setItem('notes', JSON.stringify(notes));
-  }
-    return `
-    <div id="notes-containter">
-      <div
-        id="notes"
-        data-append="#notes",
-        data-fallback="LoadingSvg"
-      >
-        ${(createdNotes && createdNotes.length !==0) ? 
-          createdNotes.map(note => {
-            return `
-              <div
-                id="${nextNoteId}"
-                contenteditable=""  
-                onblur="$trigger(${ saveNote } , this, { createdNotes })" 
-                data-id="${nextNoteId}"
-              > 
-                ${note.text}
-              </div>
-            `;
-          }) : 'No note found'
-        }
-      </div>
-      <button onclick="$render( Notes, { props })">Add a note</button>
-    </div>
-  `;
-}
-
-function Button({ id, classes, children, status }){
-  const flash = {
-    0:{
-      value: 'uploading...',
-      color: ''
-    },
-    1:{
-      value: 'loading...',
-      color: ''
-    },
-    2:{
-      value: 'downloading...',
-      color: ''
-    },
-    3:{
-      value: 'processing...',
-      color: ''
-    },
-    4:{
-      value: 'deleting...',
-      color: ''
-    },
-    5:{
-      value: 'completed!',
-      color: ''
-    },
-    6:{
-      value: 'done!',
-      color: ''
-    }
-  } 
-
-  const props = {id, classes, children: flash[status].value, status};
-
-  return`
-    <div id="${id}">
-      <button 
-        class="${classes}" 
-        ${status && 'disabled=""'}
-        onchange="$render(Button, {props})"
-      >
-        ${status && '<img src"" alt="loading...">'} 
-        ${children}
-      </button>
-    </div>
-  `;
-}
-
-//fix $trigger not seeing props made with {createNotes} instaead of ${stringify(createNotes)}

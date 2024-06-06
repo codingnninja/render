@@ -252,7 +252,7 @@ const Users = async (props) => {
   return runModel(options);
 }; */
 
-console.log($select('.post[0], .post[add|class=rubbish]'))
+console.log($select('.post[0], .post[add|class=rubbish fade, add|textContent= I love you]'))
 console.log($select('.post:not(#e3)'))
 console.log($select('.post[filterOut|id=e3]'))
 
