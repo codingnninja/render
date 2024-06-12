@@ -183,8 +183,8 @@ async function checkForJsQuirks(input) {
     console.warn(errorMsg);
   }
 
-  if (input.includes('undefined')) {
-    const errorMsg = 'undefined is found. Check this component for correction.';
+  if (input.includes('undefined') | input.includes('null')) {
+    const errorMsg = 'undefined or null is found. Check this component for correction.';
     callRenderErrorLogger(errorMsg);
     console.warn(errorMsg);
   }
