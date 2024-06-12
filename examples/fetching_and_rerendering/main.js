@@ -4,7 +4,7 @@ import { $render, $register, $select } from "../../dist/esm/render.min.js";
 const audioURL = '';
 
 const images = [
-    {src:"https://flowbite.s3.amazonaws.com/docs/gallery/square/image-1.jpg", alt:"Ayoba_mope", mo:{y:[{o:'ayo'}]}, age:40},
+    {src:"https://flowbite.s3.amazonaws.com/docs/gallery/square/image-1.jpg:80", alt:"Ayoba_mope", mo:{y:[{o:'ayo'}]}, age:40},
     {src: "https://flowbite.s3.amazonaws.com/docs/gallery/square/image-2.jpg", alt:""},
     {src: "https://flowbite.s3.amazonaws.com/docs/gallery/square/image-3.jpg", alt:""},
     {src: "https://flowbite.s3.amazonaws.com/docs/gallery/square/image-4.jpg", alt:""},
@@ -145,17 +145,16 @@ const images = [
         </div>`;
     }
     const Pagination = ({images}) => {
-      const listItems = images.map((image, key) => {
-        return `
+      const listItems = images.map((image, key) => `
         <div id="${key}">
           <img
-            onClick="$render(CurrentImage, {image})"
+            onClick="$render(CurrentImage, { image })"
             class="h-auto max-w-full rounded-lg" 
             src="${image.src}"
           />
         </div>
-      `});
-      
+      `);
+
       return `
         <div 
           class="grid grid-cols-5 gap-4"
@@ -165,6 +164,9 @@ const images = [
       `;
     }
     const CurrentImage = ({src, alt, yes}) => {
+      //
+      /*  */
+      console.log(src, alt, yes, 'here')
       return `
         <div id="current-image">
           <img class="h-auto max-w-full rounded-lg" src="${src}" alt="${alt}">
@@ -252,16 +254,17 @@ const Users = async (props) => {
   return runModel(options);
 }; */
 
-console.log($select('.post[0], .post[add|class=rubbish fade, add|textContent= I love you]'))
+console.log($select('.post[0], .post[add|class=rubbish fade]'))
 console.log($select('.post:not(#e3)'))
-console.log($select('.post[filterOut|id=e3]'))
+console.log($select('.post[filterOut|textContent=*m]'))
+console.log($select('.post[sort|order=lengthSortAsc]'))
+console.log($select('.price[sort|order=shuffle]'))
 
 const start = performance.now();
 
   console.log($select(`
     .post[id~=e3],
-    .post:not(#e3),
-    .post[delete|id=e3]
+    .post:not(#e3)  
   `));
 
 // const end = performance.now();

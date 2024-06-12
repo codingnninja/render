@@ -18,4 +18,4 @@ const lang = prompt("What is your favorite programming language?");
 
 Of course, images are not left out.
 
-<img src="/logo.svg" alt="adocs logo">
+<img src="/render-logo.png" alt="adocs logo">

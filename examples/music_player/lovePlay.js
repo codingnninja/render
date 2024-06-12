@@ -115,7 +115,6 @@ const resolveVolume = (audio, song) => {
 }
 
 const playSelectedSong = (element, index) => {
-  console.log('I get here');
   const selectedSong = appState.getSong(index, element);
   $render(Repeat)
 }
@@ -194,6 +193,7 @@ const Overlay = ({toggle}) => {
       </div>
   `;
 }
+
 const CurrentSong = ({song}) => {
   return `
     <div class="container" id="playing-song">
@@ -203,6 +203,7 @@ const CurrentSong = ({song}) => {
     </div>
   `;
 }
+
 const CurrentSongInformation = ({song}) => {
   const updateDuration = (elements) => {
     const [audio,  playerSeekRange, endRange, playerDuration ] = elements;
@@ -212,6 +213,7 @@ const CurrentSongInformation = ({song}) => {
     appState.range.end = playerSeekRange.max;
     playerDuration.textContent = appState.getTimecode(Number(playerSeekRange.max));
   }
+
   return `
     <audio src=${song.musicPath} id="audio-${song.id}" data-id="${song.id}" onEnded="appState.autopilotMode(this, '${stringify(song)}')" onloadeddata="$trigger(${updateDuration}, '#audio-${song.id},#seek-${song.id}, #seek-right-${song.id}, #duration')" class="playing-audio"></audio>
     <figure class="music-banner">
@@ -249,6 +251,7 @@ const SeekControl = ({song}) => {
     </div>
   `;
 }
+
 const Volume = ({song}) => {
   const changeVolume = function (elements) {
     const audio = elements[0];
@@ -364,7 +367,7 @@ const Play = ({song}) => {
   const audio = $select(`#audio-${song.id}`); 
   const props = {song};
   clearInterval(appState.playingInterval);
-console.log(audio)
+
   if(audio){
     song.isPlaying = audio.paused ? true : false; 
     appState.resolveVolume(audio, song);

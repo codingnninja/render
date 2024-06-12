@@ -1,8 +1,15 @@
 let _$;
 
+function callRenderErrorLogger() {
+  if(globalThis['RenderErrorLogger']) return false;
+  const component = globalThis['RenderErrorLogger'];
+  $render(component);
+}
+
 function removeJsComments(code) {
   return code.replace(/\/\/.*|\/\*[\s\S]*?\*\//g, ' ');
 }
+
 function sanitizeString(str) {
   return str
     .replace(/&/g, '&amp;')
@@ -26,12 +33,67 @@ function deSanitizeString(str) {
     .replace(/\n/g, "\\n")
     .replace(/&#96/g, "`")
     .replace(/&#x2F;/g, '\/');
-  return props
+  return props;
 }
 
-const replacer = (key, value) => {
-  if (typeof value === 'function') {
-    const sanitizedString = sanitizeString(normalizeHTML(value.toString()))
+function serializeWeakMap(weakMap) {
+  const map = new Map();
+  weakMap.forEach((value, key) => {
+    map.set(key, value);
+  });
+
+  return {
+    dataType: 'WeakMap',
+    value: Array.from(map.entries())
+  }
+}
+
+function deserializeWeakMap(entries) {
+  if(entries.dataType !== 'WeakMap') {
+    throw('A WeakMap data type is expected');
+  }
+  const map = new Map(entries.value);
+  const weakMap = new WeakMap();
+  map.forEach((value, key) => {
+    weakMap.set(key, value);
+  });
+  return weakMap;
+}
+
+function serializeWeakSet(weakSet) {
+  return {
+    dataType: 'WeakSet',
+    value: Array.from(weakSet.value)
+  };
+}
+
+function deserializeWeakSet(entries) {
+  if(entries.dataType !== 'WeakSet') {
+    throw('A WeakSet data type is expected');
+  }
+
+  const weakSet = new WeakSet();
+  entries.forEach((value) => {
+    weakSet.add(value);
+  });
+  return weakSet;
+}
+
+function replacer (key, value) {
+  if(value === undefined){
+    return "__undefined__";
+  } else if (value instanceof WeakMap) {
+    return serializeWeakMap(value);
+  } else if (value instanceof WeakSet) {
+    return serializeWeakSet(value);
+  } else if (typeof value === "bigint") {
+    return `__BigInt__${value.toString()}`;
+  } else if (value instanceof Date) {
+    return `__Date__${value.toISOString()}`;
+  } else if (value instanceof RegExp) {
+    return `__RegExp__${value.toString()}`;
+  } else if (typeof value === 'function') {
+    const sanitizedString = sanitizeString(removeBreakLine(removeJsComments(value.toString())))
     return `__function__:${sanitizedString}`;
   } else if (typeof value === 'symbol') {
     return `__symbol__${String(value)}`;
@@ -50,15 +112,29 @@ const replacer = (key, value) => {
   }
 };
 
-const reviver = (key, value) => {
-  if (typeof value === 'string' && value.startsWith('__function__')) {
-    let functionString = value.slice(13);
-    const deSanitizedString = deSanitizeString(functionString);
-    return new Function(`return ${deSanitizedString}`)();
+function reviver (key, value) {
+  if (typeof value === 'string') {
+    if (value === "__undefined__") return undefined;
+    if (value.startsWith("__Date__")) return new Date(value.slice(8));
+    if (value.startsWith("__BigInt__")) return BigInt(value.slice(10));
+    if(value.startsWith('__function__')) {
+      let functionString = value.slice(13);
+      const deSanitizedString = deSanitizeString(normalizeHTML(functionString));
+      return new Function(`return ${deSanitizedString}`)();
+    }
+    if (value.startsWith("__RegExp__")) {
+      const match = value.slice(10).match(/\/(.*?)\/([gimsuy]*)$/);
+      return new RegExp(match[1], match[2]);
+    }
+    return value;
   } else if (value && typeof value === 'object' && value.dataType === 'Map') {
     return new Map(value.value);
   } else if (value && typeof value === 'object' && value.dataType === 'Set') {
     return new Set(value.value);
+  } else if (value && typeof value === 'object' && value.dataType === 'WeakSet') {
+    return deserializeWeakMap(value);
+  } else if (value && typeof value === 'object' && value.dataType === 'WeakMap') {
+    return deserializeWeakSet(value);
   } else {
     return value;
   }
@@ -70,11 +146,16 @@ function formatKeyValuePairs(input) {
   });
 }
 
-//replace $trigger first argument with ${name} if it has {name}
 function normalizePropPlaceholderAndUtilInTrigger(input) {
-  const regex = /\s*\$trigger\s*\(\s*([^,]+)\s*(?:,\s*([^,]+)\s*)?(?:,\s*{\s*([^{}$]+)\s*}\s*)?\s*\)/g;/* \{([^{}]+)\}\) */
+  const regex = /\s*\$trigger\s*\(\s*([^,]+)\s*(?:,\s*([^,]+)\s*)?(?:,\s*{\s*([^{}$]+)\s*}\s*)?\s*\)/g;
+
   return input.replace(regex, (_, arg1, arg2, value) => {
     const updatedArg1 = arg1.startsWith('{') ? `$${arg1}`: arg1;
+
+    if(arg2 === undefined) {
+      return "$trigger("+updatedArg1 +")";
+    }
+
     if(value === undefined) {
       return "$trigger("+updatedArg1 + "," + arg2 + ")";
     } 
@@ -88,10 +169,18 @@ function isObject(value) {
   );
 };
 
-async function checkForObjectString(input) {
+async function checkForJsQuirks(input) {
   input = isPromise(input) ? await input : input;
   if (input.includes('[object Object]')) {
     throw new Error('You are expected to pass an object or an array of object(s) with {} but you used ${}');
+  }
+
+  if (input.includes('NaN')) {
+    throw new Error('NaN is found');
+  }
+
+  if (input.includes('undefined')) {
+    throw new Error('undefined is found. Check this component for correction.');
   }
   return input;
 }
@@ -112,7 +201,6 @@ const CONSTANT = {
  * @param str
  * @returns {string | * | void}
  */
-
  function removeScript(str){
    return str.replace(/<script[^>]*>([^]*?)<\/script>/g, '');
  }
@@ -122,10 +210,9 @@ const CONSTANT = {
  * @param str
  * @returns {string | * | void}
  */
-
- function correctBracket(str) {
-   return str.replace(/("[^<>\/"]*)<([^<>\/"]+)>([^<>\/"]*")/g, '"$1|$2|$3"');
- }
+function correctBracket(str) {
+  return str.replace(/("[^<>\/"]*)<([^<>\/"]+)>([^<>\/"]*")/g, '"$1|$2|$3"');
+}
  
   /**
  * remove comment
@@ -198,7 +285,6 @@ const CONSTANT = {
  * Todo: This should be made better with a proper parsing 
  * @returns {{}}
  */
-
  function convertAttributesToProps(str){
   const regexToMatchProps = /([\S]+=([`"']?)(_9s35Ufa7M67wghwT_([^]*?)_9s35Ufa7M67wghwT_)\1)/g;
   const matches = {};
@@ -214,6 +300,7 @@ const CONSTANT = {
     }
   } catch (error) {
     // If parsing fails due to a SyntaxError, handle the error here
+    callRenderErrorLogger(error);
     console.error("Parsing Error:", error);
   }
 
@@ -293,19 +380,16 @@ function normalizeNumberOrBoolean(paramValue){
 function normalizeHTML(str){
   return correctBracket(
     getBodyIfHave(
-      removeBreakLine(
-        removeComment(
-          removeJsComments(
-            removeScript(str)
-          )
+      removeComment(
+        removeScript(
+          removeBreakLine(str)
         )
       )
     )
   );
 }
 
-const parseChildrenComponents = async function(extensibleStr, currentElement){
-  
+async function parseChildrenComponents (extensibleStr, currentElement) {
   const line = currentElement;
   const regularMatch = line.match(/<([^\s<>]+) ?([^<>]*)>/);
   const selfClosingMatch = line.match(/<([^\s<>]+) ?([^<>]*)\/>/);
@@ -329,6 +413,7 @@ const parseChildrenComponents = async function(extensibleStr, currentElement){
       return extensibleStr;
     }
   } catch(error){
+    callRenderErrorLogger(error);
     console.error(error);
   }
 };
@@ -344,21 +429,22 @@ function convertStackOfHTMLToString(stack) {
   if (stack.length > 0) {
     stack.forEach((node, index) => {
       // text node
+      const trimmedNode = node.trim();
       if(isLine(NODE_TYPE.close, node)) {
-        if(isLine(CONSTANT.isComponentCloseTag, node)) {
+        if(isLine(CONSTANT.isComponentCloseTag, trimmedNode)) {
           html+='</div>';
-        } else if(!isLine(CONSTANT.isFirstLetterCapped, node) && stack[index - 1] === '__placeholder'){
+        } else if(!isLine(CONSTANT.isFirstLetterCapped, trimmedNode) && stack[index - 1] === '__placeholder'){
           html+='';
-        } else if(!isLine(CONSTANT.isFirstLetterCapped, node) && stack[index - 1].trim() !== '__placeholder'){
-          html+=node;
+        } else if(!isLine(CONSTANT.isFirstLetterCapped, trimmedNode) && stack[index - 1].trim() !== '__placeholder'){
+          html+=trimmedNode;
         } 
         // html+=node;
-      } else if(node.trim() === ","){
+      } else if(trimmedNode === ","){
         html+="";
-      } else if(isLine(NODE_TYPE.start, node)) {
-        html += node;
-      } else if(isLine(CONSTANT.isNotTag, node) && node.trim() !== '__placeholder') {
-        html += node;
+      } else if(isLine(NODE_TYPE.start, trimmedNode)) {
+        html += trimmedNode;
+      } else if(isLine(CONSTANT.isNotTag, trimmedNode) && trimmedNode.trim() !== '__placeholder') {
+        html += trimmedNode;
       }
     });
   }
@@ -382,8 +468,8 @@ async function parseComponent (str) {
     const stack = [];
     let depth = 0;
     while (extensibleStr.length > depth ) {
-    const currentElement = extensibleStr[depth]
-      if(currentElement.trim() === '') {
+    const currentElement = extensibleStr[depth].trim()
+      if(currentElement === '') {
         depth++
         continue;
       } 
@@ -394,9 +480,9 @@ async function parseComponent (str) {
         depth++;
       }
     }
-
     return convertStackOfHTMLToString(stack);
   } catch (error) {
+    callRenderErrorLogger(error);
     console.error(error);
   }
   
@@ -413,8 +499,9 @@ async function callComponent(element) {
     const component = globalThis[element.tagName];
     const children = element.children;
     let props = element.props;
+
     if(Object.keys(props).length === 0 && !element.children) {
-      return checkForObjectString(component());
+      return checkForJsQuirks(component());
     } else {
      /*  if(isObject(props) && 
          isObject(props[Object.keys(props)[0]]) &&
@@ -426,11 +513,12 @@ async function callComponent(element) {
         props.children = children;
       }
 
-      const calledComponent = checkForObjectString(component(props));
+      const calledComponent = checkForJsQuirks(component(props));
       const resolvedComponent = isPromise(calledComponent) ? await calledComponent : calledComponent;
       return resolvedComponent;
     } 
   } catch (error) {
+    callRenderErrorLogger(error);
     console.error(`${error} in ${globalThis[element.tagName]}`);
   }
 };
@@ -447,6 +535,7 @@ async function callComponent(element) {
     const a = await parseComponent(_str);
     return a;
    } catch (error) {
+    callRenderErrorLogger(error);
     console.error(error);
    }
  };
@@ -477,7 +566,7 @@ const isBrowser = (_) => {
 }
 function isInitialLetterUppercase(func, context) {
   if(typeof func !== 'function') {
-    throw(`Use ${context}(functionName, arg) instead of ${context}(funcationName(arg))`)
+    throw(`Use ${context}(functionName, arg) instead of ${context}(funcationName(arg)) or the first argument you provided is a function.`)
   }
   const initialLetter = func.name.charAt(0);
   return initialLetter === initialLetter.toUpperCase();
@@ -511,6 +600,7 @@ function isInitialLetterUppercase(func, context) {
       const result = await processJSX(sanitizeOpeningTagAttributes(resolvedComponent));
       return result;
     } catch (error) {
+      callRenderErrorLogger(error);
       console.error(`${error} in ${globalThis[component.name]}`);
     }
   }
@@ -533,7 +623,7 @@ async function resolveComponent(component, arg){
     throw('A component must return a string');
   }
 
-  return checkForObjectString(resolvedComponent);
+  return checkForJsQuirks(resolvedComponent);
 }
 function isFetcher(parsedComponent){
   if(parsedComponent.dataset.append ||
@@ -601,12 +691,16 @@ function insertElementsIntoParent(parent, elements, parseComponent){
     }
 
   } else {
-    console.error(`Invalid parameters. You need to add data-render="defer" to the wrapping div of a component to defer its execution to the client or you need to add data-replace, data-append or data-prepend to the target container to update the content of a fetcher. Solution: (link to docs)`);
+    const errorMsg = `Invalid parameters. You need to add data-render="defer" to the wrapping div of a component to defer its execution to the client or you need to add data-replace, data-append or data-prepend to the target container to update the content of a fetcher. Solution: (link to docs)`
+    error.messge += errorMsg
+    callRenderErrorLogger(error);
+    console.error(error);
   }
 }
 
 function stopIfNotStartWithHash(selector, insertionType){
   if (!/^#/.test(selector)) {
+    callRenderErrorLogger(error);
     console.error(`${insertionType} value must start with #`);
   } 
 }
@@ -698,7 +792,6 @@ function replaceValueWithStringify(functionString) {
       return key + "=" + "${stringify(" + value + ")}";     
   });
 
-  // Todo: Make sure the argument optional
   func = func.replace(/(\w+)="\s*\$render\s*\(([^{}]+)\,\s*\{\s*([^{}]+)\s*\}\s*\)\s*"/g, (match, key, component, prop) => {
     return key + '="' + '$render(' + component + ',' + "'${stringify(" + prop + ")}')" + '"';  
   });
@@ -755,6 +848,7 @@ function $trigger(func, anchors, data){
       throw('You can not use $trigger on servers');
     }
   } catch (error) {
+    callRenderErrorLogger(error);
     console.error(`${error} but ${func.name ? `${typeof func.name}` : typeof func} is provided in ${func.name ?? func}`);
   }
 }
@@ -772,6 +866,7 @@ function stringify(arrOrObj){
     const sanitizedString = sanitizeString(data);
     return `_9s35Ufa7M67wghwT_${sanitizedString}_9s35Ufa7M67wghwT_`;
   } catch (error) {
+    callRenderErrorLogger(error);
     console.error(error);
   }
 }
@@ -784,7 +879,8 @@ function convertToPropSystem(str){
       const parsedJSON = JSON.parse(match[3], reviver);
       return parsedJSON;
     } catch (error) {
-      console.error("Parsing Error:", error);
+      callRenderErrorLogger(error);
+      console.error("Unexpected props:", error);
     }
   }
   return JSON.parse(str, reviver);
@@ -792,18 +888,19 @@ function convertToPropSystem(str){
 
 function $purify(props){
   try {
-    if(isObject(props) || Array.isArray(props)) {
+    if(typeof props !== 'string') {
       return props;
     } else if(typeof props === 'string'){
-      const isCrude = /_9s35Ufa7M67wghwT_/.test(props);
+      const isCrude = /^(_9s35Ufa7M67wghwT_)/.test(props);
       if(!isCrude){
         return props;
       } 
     } else if (props === undefined) {
       return;
     }
-    return convertToPropSystem(props);
+    return convertToPropSystem(deSanitizeString(props));
   } catch (error) {
+    callRenderErrorLogger(error);
     console.error(error)
   }
 }
@@ -853,7 +950,7 @@ function resolveMultipleAttributes (constraints){
   while(depth < constraints.length){
     let splittedConstraints = constraints[depth].split('|').filter(Boolean);
     const [action, paramString] = splittedConstraints;
-    const param = paramString.split(/(\w+)(\!=|\-=|\+=|>=?|<=?|={1,2})(.+)/).filter(Boolean);
+    const param = paramString.split(/(\w+)(\!=|\-=|\+=|=\*|>=?|<=?|={1,2})(.+)/).filter(Boolean);
     processedConstraints.push([action.trim(), param]);
     depth++
   }
@@ -892,6 +989,7 @@ function $select(str, offSuperpowers = false) {
     if(elements[0].length === 0) return null;
     return (elements && elements.length === 1) ? elements[0] : elements;
   } catch (error) {
+    callRenderErrorLogger(error);
     console.error(`Oops! Check the selector(s) '${str}' provided for validity because it seems the target is not found.`);
   }
 
@@ -910,8 +1008,10 @@ function applyAction(elements, constraints) {
     const [action, constraint] = constraints[depth]
     if (action === 'delete') {
       result = del(result, constraints[depth]);
+    } else if (action === 'sort') {
+      result = sortElements(result, constraints[depth])
     } else if (action.includes('filter')) {
-      result = filter(elements, constraints[depth]);
+      result = filter(result, constraints[depth]);
     } else if (constraints !== undefined){
       result = setAttribute(result, constraints[depth]);
     }
@@ -921,7 +1021,17 @@ function applyAction(elements, constraints) {
   return result;
 }
 
+function fuzzyCompare (a, b, tolerance = 0.01) {
+  if (!isNaN(a) && !isNaN(b)) {
+    const tolerance = 0.01
+    return Math.abs(Number(a) - Number(b)) <= tolerance;
+  } else {
+    return a.toLowerCase().includes(b.toLowerCase()) || b.toLowerCase().includes(a.toLowerCase());
+  }
+};
+
 const operators = {
+  '=*': (key, element, value) => fuzzyCompare(element[key], value),
   '>': (key, element, value) => element[key] > value,
   '<': (key, element, value) => element[key] < value,
   '=': (key, element, value) => element[key] === value,
@@ -954,7 +1064,9 @@ function del(elements, constraints) {
       result.push(elements[index]);
       continue;
     }
-    console.log('the selector and constraints you provided do not match any target')
+    const errorMsg = 'the selector and constraints you provided do not match any target'
+    callRenderErrorLogger(errorMsg);
+    console.log(errorMsg);
   }
   return result.length === 1 ? result[0] : result;
 }
@@ -983,7 +1095,6 @@ function setAttribute(elements, constraints) {
 }
 
 function makeTag (index) {
-  console.log(index)
   const div = document.createElement('div');
   div.id = index;
   return div;
@@ -1000,7 +1111,7 @@ function filter(elements, constraints){
     key = (key === 'i' | key === 'index') ? 'id' : key;
     
     const condition = key === 'class' ? operators[key]('contains', element, value) : operators[operator](key, element, value);
-    
+
     if( (action ==='filterIn' && condition) | (action ==='filterOut' && !condition)){
       const filteredElement = (params[0] === 'i' | params[0] === 'index') ? elements[value] : elements[depth];
       result.push(filteredElement);
@@ -1008,6 +1119,37 @@ function filter(elements, constraints){
     depth++;
   }
   return result.length === 1 ? result[0] : result;
+}
+
+function sortElements(array, constraints) {
+  const [action, params] = constraints;
+  const [key, operator, order] = params;
+  const elements = [...array]
+  const parent = elements[0].parentNode;
+  let children = '';
+  let depth = 0;
+
+  const sortFunctions = {
+    numberAsc: (a, b) => Number(a.textContent) - Number(b.textContent),
+    numberDesc: (a, b) => Number(b.textContent) - Number(a.textContent),
+    lengthSortAsc: (a, b) => a.textContent.length - b.textContent.length,
+    lengthSortDesc: (a, b) => b.textContent.length - a.textContent.length,
+    alphabetAsc: (a, b) => a.textContent.localeCompare(b.textContent),
+    alphabetDesc: (a, b) => b.textContent.localeCompare(a.textContent),
+    shuffle: () => Math.random() - 0.5,
+    dataAsc: (a, b) => (new Date(a.textContent) - new Date(b.textContent)),
+    dataDesc: (a, b) => (new Date(b.textContent) - new Date(a.textContent))
+  };
+
+  let sortedElements = elements.sort(sortFunctions[order]);
+
+  while(depth < sortedElements.length){
+    children += sortedElements[depth].outerHTML;
+    depth++
+  }
+
+  parent.innerHTML = children;
+  return sortedElements;
 }
 
 function registerInternalUtils(){
