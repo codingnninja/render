@@ -172,15 +172,21 @@ function isObject(value) {
 async function checkForJsQuirks(input) {
   input = isPromise(input) ? await input : input;
   if (input.includes('[object Object]')) {
-    throw new Error('You are expected to pass an object or an array of object(s) with {} but you used ${}');
+    const errorMsg = 'You are expected to pass an object or an array of object(s) with {} but you used ${}';
+    callRenderErrorLogger(errorMsg);
+    console.warn(errorMsg);
   }
 
   if (input.includes('NaN')) {
-    throw new Error('NaN is found');
+    const errorMsg = 'NaN is found';
+    callRenderErrorLogger(errorMsg);
+    console.warn(errorMsg);
   }
 
   if (input.includes('undefined')) {
-    throw new Error('undefined is found. Check this component for correction.');
+    const errorMsg = 'undefined is found. Check this component for correction.';
+    callRenderErrorLogger(errorMsg);
+    console.warn(errorMsg);
   }
   return input;
 }
