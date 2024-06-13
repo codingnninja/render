@@ -200,8 +200,8 @@ const images = [
     `;
   }
 
-async function Users(props) {
-  const images = {props};
+const Users = async ( props ) => {
+  const images = { props };
   const response = await fetch("https://randomuser.me/api?results=30");
   const users = await response.json();
 
@@ -225,8 +225,8 @@ async function Users(props) {
     `;
 };
 
-function RenderErrorLogger(error) {
-  console.log(error)
+function RenderErrorLogger({error}) {
+  console.error(error)
   console.log('This is called by render internal');
   return '';
 }

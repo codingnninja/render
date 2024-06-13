@@ -169,24 +169,22 @@ function isObject(value) {
   );
 };
 
-async function checkForJsQuirks(input) {
+async function checkForJsQuirks(input, component) {
   input = isPromise(input) ? await input : input;
   if (input.includes('[object Object]')) {
-    const errorMsg = 'You are expected to pass an object or an array of object(s) with {} but you used ${}';
+    const errorMsg = `You are expected to pass an object or an array of object(s) with {} but you used \${} in ${component}`;
     callRenderErrorLogger(errorMsg);
-    console.warn(errorMsg);
   }
 
   if (input.includes('NaN')) {
-    const errorMsg = 'NaN is found';
+    const errorMsg = `NaN is found in ${component}`;
     callRenderErrorLogger(errorMsg);
-    console.warn(errorMsg);
   }
 
   if (input.includes('undefined') | input.includes('null')) {
-    const errorMsg = 'undefined or null is found. Check this component for correction.';
+    const errorMsg = `undefined or null is found ${component}. Check this component for correction.`;
+
     callRenderErrorLogger(errorMsg);
-    console.warn(errorMsg);
   }
   return input;
 }
@@ -507,7 +505,7 @@ async function callComponent(element) {
     let props = element.props;
 
     if(Object.keys(props).length === 0 && !element.children) {
-      return checkForJsQuirks(component());
+      return checkForJsQuirks(component(), component);
     } else {
      /*  if(isObject(props) && 
          isObject(props[Object.keys(props)[0]]) &&
@@ -519,14 +517,14 @@ async function callComponent(element) {
         props.children = children;
       }
 
-      const calledComponent = checkForJsQuirks(component(props));
+      const calledComponent = checkForJsQuirks(component(props), component);
       const resolvedComponent = isPromise(calledComponent) ? await calledComponent : calledComponent;
       return resolvedComponent;
     } 
   } catch (error) {
-    error.message += `in ${globalThis[element.tagName]}`;
-    callRenderErrorLogger(error);
-    console.error(error);
+    const componentName = element.tagName;
+    callRenderErrorLogger({error, component: componentName });
+    console.error(`${ error } in ${globalThis[element.tagName]}`);
   }
 };
 
@@ -598,7 +596,7 @@ function isInitialLetterUppercase(func, context) {
           renderedApp = await handleClientRendering(updatedComponent, props);
           return renderedApp
         } else {
-          window.addEventListener('DOMContentLoaded', async ()=> {
+          window.addEventListener('DOMContentLoaded', async () => {
             renderedApp = await handleClientRendering(updatedComponent, props);
             return renderedApp;
           })
@@ -608,8 +606,10 @@ function isInitialLetterUppercase(func, context) {
       const result = await processJSX(sanitizeOpeningTagAttributes(resolvedComponent));
       return result;
     } catch (error) {
-      callRenderErrorLogger({error});
-      console.error(`${error} in ${globalThis[component.name]}`);
+
+      callRenderErrorLogger({ error, component });
+      console.error(`${error} in ${globalThis[component.name] ? globalThis[component.name] : component.name}`);
+
     }
   }
 
@@ -631,7 +631,7 @@ async function resolveComponent(component, arg){
     throw('A component must return a string');
   }
 
-  return checkForJsQuirks(resolvedComponent);
+  return checkForJsQuirks(resolvedComponent, component);
 }
 function isFetcher(parsedComponent){
   if(parsedComponent.dataset.append ||
@@ -703,12 +703,13 @@ function insertElementsIntoParent(parent, elements, parseComponent){
     error.messge += errorMsg
     callRenderErrorLogger(error);
     console.error(error);
+
   }
 }
 
 function stopIfNotStartWithHash(selector, insertionType){
   if (!/^#/.test(selector)) {
-    callRenderErrorLogger(error);
+    callRenderErrorLogger({ error, selector, message: `${insertionType}value must start with #` });
     console.error(`${insertionType} value must start with #`);
   } 
 }

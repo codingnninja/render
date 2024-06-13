@@ -20,6 +20,12 @@ describe('Convert data type to render prop string', function() {
         expect(result).toBe('_9s35Ufa7M67wghwT_{&quot;dataType&quot;:&quot;Map&quot;,&quot;value&quot;:[]}_9s35Ufa7M67wghwT_');
     });
 
+    it('should correctly serialize a WeakMap object', () => {
+        const input = new WeakMapMap();
+        const result = stringify(input);
+        expect(result).toBe('_9s35Ufa7M67wghwT_{&quot;dataType&quot;:&quot;WeaMap&quot;,&quot;value&quot;:[]}_9s35Ufa7M67wghwT_');
+    });
+
     it('should correctly serialize a Set', () => {
         const input = new Set([1,3]);
         const result = stringify(input);
