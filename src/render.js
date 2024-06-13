@@ -1,9 +1,9 @@
 let _$;
 
-function callRenderErrorLogger() {
-  if(globalThis['RenderErrorLogger']) return false;
+function callRenderErrorLogger(error) {
+  if(!globalThis['RenderErrorLogger']) return false;
   const component = globalThis['RenderErrorLogger'];
-  $render(component);
+  $render(component, { error });
 }
 
 function removeJsComments(code) {
@@ -524,8 +524,9 @@ async function callComponent(element) {
       return resolvedComponent;
     } 
   } catch (error) {
+    error.message += `in ${globalThis[element.tagName]}`;
     callRenderErrorLogger(error);
-    console.error(`${error} in ${globalThis[element.tagName]}`);
+    console.error(error);
   }
 };
 
@@ -583,11 +584,12 @@ function isInitialLetterUppercase(func, context) {
   * @param component string
   * @returns string || void (mutates the DOM)
   */
+
   async function $render(component, props) {
     const updatedComponent = makeFunctionFromString(component.toString());
     try {
       if(!isInitialLetterUppercase(component, '$render')){
-        throw('A component must start with a capital letter.')
+        throw('A component must start with a capital letter')
       }
       if(isBrowser() && typeof document !== 'undefined'){
         let renderedApp;
@@ -606,7 +608,7 @@ function isInitialLetterUppercase(func, context) {
       const result = await processJSX(sanitizeOpeningTagAttributes(resolvedComponent));
       return result;
     } catch (error) {
-      callRenderErrorLogger(error);
+      callRenderErrorLogger({error});
       console.error(`${error} in ${globalThis[component.name]}`);
     }
   }

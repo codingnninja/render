@@ -4,7 +4,7 @@ import { $render, $register, $select } from "../../dist/esm/render.min.js";
 const audioURL = '';
 
 const images = [
-    {src:"https://flowbite.s3.amazonaws.com/docs/gallery/square/image-1.jpg:80", alt:"Ayoba_mope", mo:{y:[{o:'ayo'}]}, age:40},
+    {src:"https://flowbite.s3.amazonaws.com/docs/gallery/square/image-1.jpg", alt:"Ayoba_mope", mo:{y:[{o:'ayo'}]}, age:40},
     {src: "https://flowbite.s3.amazonaws.com/docs/gallery/square/image-2.jpg", alt:""},
     {src: "https://flowbite.s3.amazonaws.com/docs/gallery/square/image-3.jpg", alt:""},
     {src: "https://flowbite.s3.amazonaws.com/docs/gallery/square/image-4.jpg", alt:""},
@@ -168,7 +168,7 @@ const images = [
       /*  */
       console.log(src, alt, yes, 'here')
       return `
-        <div id="current-image">
+        <div id="current-image">NaN
           <img class="h-auto max-w-full rounded-lg" src="${src}" alt="${alt}">
         </div>
       `;  
@@ -200,7 +200,7 @@ const images = [
     `;
   }
 
-const Users = async (props) => {
+async function Users(props) {
   const images = {props};
   const response = await fetch("https://randomuser.me/api?results=30");
   const users = await response.json();
@@ -224,6 +224,12 @@ const Users = async (props) => {
       </div>
     `;
 };
+
+function RenderErrorLogger(error) {
+  console.log(error)
+  console.log('This is called by render internal');
+  return '';
+}
 
 /* const Animal = (options = {returnData: false}) => {
   function View(goats = []){
@@ -285,7 +291,8 @@ const start = performance.now();
     Pagination, 
     CurrentImage, 
     AudioStatus, 
-    AudioPlayer
+    AudioPlayer,
+    RenderErrorLogger
   );
 
   const starta = performance.now();

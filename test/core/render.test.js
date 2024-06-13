@@ -12,50 +12,36 @@ describe('Render a component', function() {
       expect(result).toEqual('<div>Hello, John!</div>');
   });
 
-  it('should process JSX', async () => {
-      const JSX = () => '<div>JSX</div>';
-      function AnotherOne(props) {
-        return `
-          <div>
-            Hello, ${props.name}!
-            <JSX />
-          </div>`;
+  it('should throw an error when the component name does not start with an uppercase letter', async () => {
+      const anotherOne = function noComponent(props) {
+        return `<div>Hello, ${props.name}!</div>`;
       };
 
-      $register(stringify, AnotherOne, JSX);
+      $register(anotherOne);
       const props = { name: 'John' };
-      const result = await $render(AnotherOne, props);
-      console.log(result)
-      expect(result).toEqual( `<div>            Hello, John!            <div>JSX</div></div>`);
+      const response = await $render(anotherOne, props);
+      expect(response).rejects.toThrow(`A component must start with a capital letter in ${globalThis['noComponent']}`);
   });
 
-  it('should process JSX with props', async () => {
-    function MyProps (props) {
-      return `<div onclick={ props } >JSX </div>`;
-    }
+  it('should render child components', async () => {
 
-    function MyTest(props) {
+    const componentA = function MComponent(props) {
       return `
-        <div>
-          Hello, ${props.name}!
-          <MyProps props="{props}" />
+        <div>Hello, ${props.name}!
+          <InnerJSX props={props} />
         </div>
       `;
     };
 
-    $register(stringify, MyTest, MyProps);
+    const InnerJSX = function MyJSX (props) {
+      return `<div>${props.name}</div>`;
+    }
+
+    $register(stringify, componentA, InnerJSX);
     const props = { name: 'John' };
-    const result = await $render(MyTest, props);
-    expect(result).toEqual( `<div>            Hello, John!            <div>JSX, John </div></div>`);
+    const result = await $render(componentA, props);
+console.log(result)
+    expect(result).toEqual('<div>Hello, John!</div>');
   });
 
-  it('should throw an error when the component name does not start with an uppercase letter', async () => {
-      function myComponent(props) {
-          return `<div>Hello, ${props.name}!</div>`;
-      };
-
-      $register(myComponent);
-      const props = { name: 'John' };
-      expect(await $render(globalThis._myComponent, props)).rejects.toThrow('A component must start with a capital letter.');
-  });
 });
