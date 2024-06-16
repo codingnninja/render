@@ -1,20 +1,12 @@
-import { $register } from "../../src/render";
-describe('Call functions with selected elements and data', function() {
+import { $trigger } from "../../src/render";
 
-    it('should call any function passed to it', () => {
-        function testFunction() {
-          return 'test';
+describe('$trigger an event handler', function() { 
+   it('should throw an error on the server', () => {
+        function myFunction() {
+            return new Set([1, 3]);   
         }
-        $trigger(testFunction);
-        expect(testFunction).toHaveBeenCalled();
-    });
-    it('should throw error when $trigger is used on the server', () => {
-        function testFunction() {
-          return 'test';
-        }
-        expect(() => {
-          const a = $trigger(testFunction);
-          console.log(a);
-        }).toThrow('You can not use $trigger on servers but string is provided in testFunction');
+        expect(
+            () => $trigger({myFunction}, '.post', "{name: 'Ayobami'}")
+        ).toThrow("You cannot use $trigger on the server");
     });
 });

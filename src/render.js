@@ -1,5 +1,8 @@
 let _$;
 
+const temporaryState = {};
+const password = 'ASa21scy$!@uyh920skaYGSH34228';
+
 function callRenderErrorLogger(error) {
   if(!globalThis['RenderErrorLogger']) return false;
   const component = globalThis['RenderErrorLogger'];
@@ -36,56 +39,46 @@ function deSanitizeString(str) {
   return props;
 }
 
-function serializeWeakMap(weakMap) {
-  const map = new Map();
-  weakMap.forEach((value, key) => {
-    map.set(key, value);
-  });
-
-  return {
-    dataType: 'WeakMap',
-    value: Array.from(map.entries())
-  }
+function insertSemicolons(code) {
+  return code.split('\n').map(line => {
+    line = line.trim();
+    if (line && !line.endsWith(';') && !line.endsWith('{') && !line.endsWith('}') && !line.endsWith(':') && !line.endsWith(',')) {
+      line += ';';
+    }
+    return line;
+  }).join('\n');
 }
 
-function deserializeWeakMap(entries) {
-  if(entries.dataType !== 'WeakMap') {
-    throw('A WeakMap data type is expected');
-  }
-  const map = new Map(entries.value);
-  const weakMap = new WeakMap();
-  map.forEach((value, key) => {
-    weakMap.set(key, value);
-  });
-  return weakMap;
-}
+function generateRandomString (limit) {
+  let randomString = '';
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
 
-function serializeWeakSet(weakSet) {
-  return {
-    dataType: 'WeakSet',
-    value: Array.from(weakSet.value)
-  };
-}
-
-function deserializeWeakSet(entries) {
-  if(entries.dataType !== 'WeakSet') {
-    throw('A WeakSet data type is expected');
+  while (randomString.length < limit) {
+    randomString += chars.charAt(Math.floor(Math.random() * chars.length)); 
   }
 
-  const weakSet = new WeakSet();
-  entries.forEach((value) => {
-    weakSet.add(value);
-  });
-  return weakSet;
+  return randomString;
 }
 
 function replacer (key, value) {
   if(value === undefined){
     return "__undefined__";
   } else if (value instanceof WeakMap) {
-    return serializeWeakMap(value);
+
+    const randomId = generateRandomString(10);
+    const placeholder = `__WeakMap__${randomId}`;
+    temporaryState[placeholder] = value;
+    globalThis[password] = temporaryState;
+    return placeholder;
+
   } else if (value instanceof WeakSet) {
-    return serializeWeakSet(value);
+
+    const randomId = generateRandomString(10);
+    const placeholder = `__WeakSet__${randomId}`;
+    temporaryState[placeholder] = value;
+    globalThis[password] = temporaryState;
+    return placeholder;
+
   } else if (typeof value === "bigint") {
     return `__BigInt__${value.toString()}`;
   } else if (value instanceof Date) {
@@ -93,8 +86,17 @@ function replacer (key, value) {
   } else if (value instanceof RegExp) {
     return `__RegExp__${value.toString()}`;
   } else if (typeof value === 'function') {
-    const sanitizedString = sanitizeString(removeBreakLine(removeJsComments(value.toString())))
-    return `__function__:${sanitizedString}`;
+    const randomId = generateRandomString(10);
+    const sanitizedString = sanitizeString (
+      removeBreakLine(
+        removeJsComments(value.toString())
+      )
+    );
+    const placeholder = `__function__${randomId}`;
+    temporaryState[placeholder] = sanitizedString;
+    temporaryState[`test_${randomId}`] = value;
+    globalThis[password] = temporaryState;
+    return placeholder;
   } else if (typeof value === 'symbol') {
     return `__symbol__${String(value)}`;
   } else if (value instanceof Map) {
@@ -115,26 +117,39 @@ function replacer (key, value) {
 function reviver (key, value) {
   if (typeof value === 'string') {
     if (value === "__undefined__") return undefined;
-    if (value.startsWith("__Date__")) return new Date(value.slice(8));
+    if (value.startsWith("__Date__")) return new Date(value.slice(8))
     if (value.startsWith("__BigInt__")) return BigInt(value.slice(10));
+    if (value.startsWith("__symbol__")) return Symbol.for(value.slice(17, -1));
     if(value.startsWith('__function__')) {
-      let functionString = value.slice(13);
+      const temporaryState = globalThis[password];
+      const functionString = temporaryState[value];
       const deSanitizedString = deSanitizeString(normalizeHTML(functionString));
+      delete temporaryState[value];
+      delete temporaryState[`test_${value.split('__function__')[1]}`];
       return new Function(`return ${deSanitizedString}`)();
     }
     if (value.startsWith("__RegExp__")) {
       const match = value.slice(10).match(/\/(.*?)\/([gimsuy]*)$/);
       return new RegExp(match[1], match[2]);
     }
+    if(value.startsWith("__WeakSet__")) {
+      const temporaryState = globalThis[password];
+      const revivedWeakSet = temporaryState[value];
+      delete temporaryState[value]
+      return revivedWeakSet;
+    }
+
+    if(value.startsWith("__WeakMap__")) {
+      const temporaryState = globalThis[password];
+      const revivedWeakMap = temporaryState[value];
+      delete temporaryState[value]
+      return revivedWeakMap;
+    }
     return value;
   } else if (value && typeof value === 'object' && value.dataType === 'Map') {
     return new Map(value.value);
   } else if (value && typeof value === 'object' && value.dataType === 'Set') {
     return new Set(value.value);
-  } else if (value && typeof value === 'object' && value.dataType === 'WeakSet') {
-    return deserializeWeakMap(value);
-  } else if (value && typeof value === 'object' && value.dataType === 'WeakMap') {
-    return deserializeWeakSet(value);
   } else {
     return value;
   }
@@ -151,7 +166,6 @@ function normalizePropPlaceholderAndUtilInTrigger(input) {
 
   return input.replace(regex, (_, arg1, arg2, value) => {
     const updatedArg1 = arg1.startsWith('{') ? `$${arg1}`: arg1;
-
     if(arg2 === undefined) {
       return "$trigger("+updatedArg1 +")";
     }
@@ -298,7 +312,7 @@ function correctBracket(str) {
     while ((match = regexToMatchProps.exec(str)) !== null) {
       const extractedContent = match[1].match(/([^=]+)=([^]*)/);
       const value = extractedContent[2].match(/([`"']?)(_9s35Ufa7M67wghwT_([^]*?)_9s35Ufa7M67wghwT_)\1/);
-    
+
       const parsedJSON = JSON.parse(value[3], reviver);
       matches[extractedContent[1]] = parsedJSON;
     }
@@ -307,7 +321,6 @@ function correctBracket(str) {
     callRenderErrorLogger(error);
     console.error("Parsing Error:", error);
   }
-
   return matches;
 }
 
@@ -830,20 +843,29 @@ function $register(...args) {
 
 function callFunctionWithElementsAndData(func, anchors, data) {
   if(typeof func === 'function'){
+
     if(!anchors && !data){
       return func();
     }
+
     if(!anchors && data){
       return func($purify(data));
     } 
+
     const elements = typeof anchors !== 'string' ? anchors : $select(anchors);
 
     const result = !data ? func(elements) : func(elements, $purify(data));
     return result;
   }
+  
   throw(`There is an error in ${func.name ?? func} or the first argument passed to $trigger is not a function`);
 }
 function $trigger(func, anchors, data){
+
+  if (!isBrowser()) {
+    throw('You cannot use $trigger on the server');
+  }
+
   try {
     if(isBrowser() && typeof document !== 'undefined'){
       if(document.readyState === 'complete'){
@@ -853,9 +875,7 @@ function $trigger(func, anchors, data){
           return callFunctionWithElementsAndData(func, anchors, data);
         })
       }
-    } else {
-      throw('You can not use $trigger on servers');
-    }
+    } 
   } catch (error) {
     callRenderErrorLogger(error);
     console.error(`${error} but ${func.name ? `${typeof func.name}` : typeof func} is provided in ${func.name ?? func}`);
@@ -869,9 +889,13 @@ function useRoot(component) {
   $el("root").innerHTML = component;
 }
 
-function stringify(arrOrObj){
+function stringify(props){
   try {
-    const data = JSON.stringify(arrOrObj, replacer);
+    if(typeof props === 'string' && props.includes('NaN') | props.includes('[object Object]') | props.includes('undefined')) {
+      return '';
+    }
+
+    const data = JSON.stringify(props, replacer);
     const sanitizedString = sanitizeString(data);
     return `_9s35Ufa7M67wghwT_${sanitizedString}_9s35Ufa7M67wghwT_`;
   } catch (error) {
@@ -885,6 +909,10 @@ function convertToPropSystem(str){
   let match = regex.exec(str);
   if(match) {
     try {
+      if(match[3].includes('\"null\"') | match[3].includes('\"[object Object]\"') | match[3].includes('\"NaN\"')) {
+        callRenderErrorLogger({error});
+        return '';
+      };
       const parsedJSON = JSON.parse(match[3], reviver);
       return parsedJSON;
     } catch (error) {
@@ -901,11 +929,11 @@ function $purify(props){
       return props;
     } else if(typeof props === 'string'){
       const isCrude = /^(_9s35Ufa7M67wghwT_)/.test(props);
-      if(!isCrude){
+      if(!isCrude && props !== 'undefined'){
         return props;
-      } 
-    } else if (props === undefined) {
-      return;
+      } else if (props.includes('null') | props.includes('undefined') | props.includes('NaN') | props.includes('[object Object]')) {
+        return '';
+      }
     }
     return convertToPropSystem(deSanitizeString(props));
   } catch (error) {
@@ -967,6 +995,7 @@ function resolveMultipleAttributes (constraints){
 }
  
 function $select(str, offSuperpowers = false) {
+  if(!isBrowser()) throw('You cannot use $select on the server');
   if (typeof str !== "string" || str === "") {
     throw ("$select expects a string of selectors");
   }

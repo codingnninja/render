@@ -168,7 +168,7 @@ const images = [
       /*  */
       console.log(src, alt, yes, 'here')
       return `
-        <div id="current-image">NaN
+        <div id="current-image">
           <img class="h-auto max-w-full rounded-lg" src="${src}" alt="${alt}">
         </div>
       `;  
@@ -180,13 +180,17 @@ const images = [
     /* */
     audio.play();
     $render(AudioStatus, 'Playing');
-  };
+  }
   function pause (audio, url){
     audio.pause();
     $render(AudioStatus, 'Paused');
   }
 
-  function setVolume(elements){ return elements[0].volume = elements[1].value;}
+  function setVolume(elements){ 
+    console.log(elements);
+    console.log('it works');
+    return elements[0].volume = elements[1].value;
+  }
   function AudioPlayer({images,audioUrl, play, pause, setVolume}) {
     return  `
       <audio src="${audioUrl}" id="myAudio"></audio>
