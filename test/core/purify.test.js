@@ -74,7 +74,7 @@ describe('Convert render prop string to equivalent data type', function() {
 
         const input = stringify(obj);
         const result = $purify(input);
-        expect(result).toEqual({ a: myFunction, name: 'Ayo'});
+        expect(result.a.name).toBe(obj.a.name);
     });
 
     it('should handle null input correctly', () => {

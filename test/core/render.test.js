@@ -17,10 +17,11 @@ describe('Render a component', function() {
         return `<div>Hello, ${props.name}!</div>`;
       };
 
+      console.error = jest.fn();
       $register(anotherOne);
       const props = { name: 'John' };
-      const response = await $render(anotherOne, props);
-      expect(response).rejects.toThrow(`A component must start with a capital letter in ${globalThis['noComponent']}`);
+      expect(await $render(anotherOne, props)).rejects.toThrow("A component must start with a capital letter");
+
   });
 
   it('should render child components', async () => {

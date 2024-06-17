@@ -89,7 +89,9 @@ function replacer (key, value) {
     const randomId = generateRandomString(10);
     const sanitizedString = sanitizeString (
       removeBreakLine(
-        removeJsComments(value.toString())
+        removeJsComments(
+          insertSemicolons(value.toString())
+        )
       )
     );
     const placeholder = `__function__${randomId}`;
@@ -398,9 +400,7 @@ function normalizeHTML(str){
   return correctBracket(
     getBodyIfHave(
       removeComment(
-        removeScript(
-          removeBreakLine(str)
-        )
+        removeScript(str)
       )
     )
   );
@@ -597,11 +597,13 @@ function isInitialLetterUppercase(func, context) {
   */
 
   async function $render(component, props) {
+    if(!isInitialLetterUppercase(component, '$render')){
+      throw new Error('A component must start with a capital letter')
+    }
+
     const updatedComponent = makeFunctionFromString(component.toString());
+
     try {
-      if(!isInitialLetterUppercase(component, '$render')){
-        throw('A component must start with a capital letter')
-      }
       if(isBrowser() && typeof document !== 'undefined'){
         let renderedApp;
         if(document.readyState === 'complete'){
@@ -857,7 +859,7 @@ function callFunctionWithElementsAndData(func, anchors, data) {
     const result = !data ? func(elements) : func(elements, $purify(data));
     return result;
   }
-  
+
   throw(`There is an error in ${func.name ?? func} or the first argument passed to $trigger is not a function`);
 }
 function $trigger(func, anchors, data){
@@ -995,9 +997,9 @@ function resolveMultipleAttributes (constraints){
 }
  
 function $select(str, offSuperpowers = false) {
-  if(!isBrowser()) throw('You cannot use $select on the server');
+  if(!isBrowser()) throw new Error('You cannot use $select on the server');
   if (typeof str !== "string" || str === "") {
-    throw ("$select expects a string of selectors");
+    throw new Error("$select expects a string of selectors");
   }
 
   try {
@@ -1028,7 +1030,7 @@ function $select(str, offSuperpowers = false) {
     return (elements && elements.length === 1) ? elements[0] : elements;
   } catch (error) {
     callRenderErrorLogger(error);
-    console.error(`Oops! Check the selector(s) '${str}' provided for validity because it seems the target is not found.`);
+    console.error(`Oops! Check the selector(s) '${str}' provided for validity because it seems the target is not found. Or you can't use $select on the server.`);
   }
 
 }

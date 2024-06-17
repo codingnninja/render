@@ -125,6 +125,11 @@ const images = [
   }
 
   const Counter = (count=0) => {
+    function memoize() {
+      alert('working')
+      console.log('works')
+    }
+
     return `
       <div id="counter">
         <div>${count}</div>
@@ -132,6 +137,7 @@ const images = [
           onClick="$render(Counter, ${count + 1})" 
           style="height:30px; width:50px">Increase
         </button>
+        <button onClick="$trigger({memoize})">alert</button>
       </div>
     `;
   };
@@ -166,7 +172,6 @@ const images = [
     const CurrentImage = ({src, alt, yes}) => {
       //
       /*  */
-      console.log(src, alt, yes, 'here')
       return `
         <div id="current-image">
           <img class="h-auto max-w-full rounded-lg" src="${src}" alt="${alt}">
@@ -178,8 +183,8 @@ const images = [
   function play (audio, url){
     //jssk
     /* */
-    audio.play();
-    $render(AudioStatus, 'Playing');
+    audio.play()
+    $render(AudioStatus, 'Playing')
   }
   function pause (audio, url){
     audio.pause();
