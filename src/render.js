@@ -546,7 +546,7 @@ async function callComponent(element) {
 * @param str
 * @constructor
 */
- const processJSX = async function (str) {
+async function processJSX (str) {
    let _str = str || '';
    try {
     _str = normalizeHTML(_str);
