@@ -1,161 +1,158 @@
 let _$;
 
 const temporaryState = {};
-const password = 'ASa21scy$!@uyh920skaYGSH34228';
+const password = "ASa21scy$!@uyh920skaYGSH34228";
 
 function callRenderErrorLogger(error) {
-  if(!globalThis['RenderErrorLogger']) return false;
-  const component = globalThis['RenderErrorLogger'];
+  if (!globalThis["RenderErrorLogger"]) return false;
+  const component = globalThis["RenderErrorLogger"];
   $render(component, { error });
 }
 
 function removeJsComments(code) {
-  return code.replace(/\/\/.*|\/\*[\s\S]*?\*\//g, ' ');
+  return code.replace(/\/\/.*|\/\*[\s\S]*?\*\//g, " ");
 }
 
 function sanitizeString(str) {
   return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
     .replace(/'/g, "&#x27;")
     .replace(/\\r/g, "\r")
     .replace(/\\n/g, "\n")
     .replace(/`/g, "&#96")
-    .replace(/\//g, '&#x2F;');
+    .replace(/\//g, "&#x2F;");
 }
 
 function deSanitizeString(str) {
-  const props = str.replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
+  const props = str
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
     .replace(/&quot;/g, '"')
     .replace(/&#x27;/g, "'")
     .replace(/\r/g, "\\r")
     .replace(/\n/g, "\\n")
     .replace(/&#96/g, "`")
-    .replace(/&#x2F;/g, '\/');
+    .replace(/&#x2F;/g, "/");
   return props;
 }
 
 function insertSemicolons(code) {
-  return code.split('\n').map(line => {
-    line = line.trim();
-    if (line && !line.endsWith(';') && !line.endsWith('{') && !line.endsWith('}') && !line.endsWith(':') && !line.endsWith(',')) {
-      line += ';';
-    }
-    return line;
-  }).join('\n');
+  return code
+    .split("\n")
+    .map((line) => {
+      line = line.trim();
+      if (
+        line &&
+        !line.endsWith(";") &&
+        !line.endsWith("{") &&
+        !line.endsWith("}") &&
+        !line.endsWith(":") &&
+        !line.endsWith(",")
+      ) {
+        line += ";";
+      }
+      return line;
+    })
+    .join("\n");
 }
 
-function generateRandomString (limit) {
-  let randomString = '';
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+function generateRandomString(limit) {
+  let randomString = "";
+  const chars =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
 
   while (randomString.length < limit) {
-    randomString += chars.charAt(Math.floor(Math.random() * chars.length)); 
+    randomString += chars.charAt(Math.floor(Math.random() * chars.length));
   }
 
   return randomString;
 }
 
-function replacer (key, value) {
-  if(value === undefined){
+function replacer(key, value) {
+  if (value === undefined) {
     return "__undefined__";
   } else if (value instanceof WeakMap) {
-
     const randomId = generateRandomString(10);
     const placeholder = `__WeakMap__${randomId}`;
     temporaryState[placeholder] = value;
     globalThis[password] = temporaryState;
     return placeholder;
-
   } else if (value instanceof WeakSet) {
-
     const randomId = generateRandomString(10);
     const placeholder = `__WeakSet__${randomId}`;
     temporaryState[placeholder] = value;
     globalThis[password] = temporaryState;
     return placeholder;
-
   } else if (typeof value === "bigint") {
     return `__BigInt__${value.toString()}`;
   } else if (value instanceof Date) {
     return `__Date__${value.toISOString()}`;
   } else if (value instanceof RegExp) {
     return `__RegExp__${value.toString()}`;
-  } else if (typeof value === 'function') {
-    const randomId = generateRandomString(10);
-    const sanitizedString = sanitizeString (
-      removeBreakLine(
-        removeJsComments(
-          insertSemicolons(value.toString())
-        )
-      )
+  } else if (typeof value === "function") {
+    const sanitizedString = sanitizeString(
+      removeBreakLine(removeJsComments(insertSemicolons(value.toString())))
     );
-    const placeholder = `__function__${randomId}`;
-    temporaryState[placeholder] = sanitizedString;
-    temporaryState[`test_${randomId}`] = value;
-    globalThis[password] = temporaryState;
-    return placeholder;
-  } else if (typeof value === 'symbol') {
+    return `__function__${sanitizedString}`;
+  } else if (typeof value === "symbol") {
     return `__symbol__${String(value)}`;
   } else if (value instanceof Map) {
     return {
-      dataType: 'Map',
-      value: Array.from(value.entries())
+      dataType: "Map",
+      value: Array.from(value.entries()),
     };
   } else if (value instanceof Set) {
     return {
-      dataType: 'Set',
-      value: Array.from(value)
+      dataType: "Set",
+      value: Array.from(value),
     };
   } else {
     return value;
   }
-};
+}
 
-function reviver (key, value) {
-  if (typeof value === 'string') {
+function reviver(key, value) {
+  if (typeof value === "string") {
     if (value === "__undefined__") return undefined;
-    if (value.startsWith("__Date__")) return new Date(value.slice(8))
+    if (value.startsWith("__Date__")) return new Date(value.slice(8));
     if (value.startsWith("__BigInt__")) return BigInt(value.slice(10));
     if (value.startsWith("__symbol__")) return Symbol.for(value.slice(17, -1));
-    if(value.startsWith('__function__')) {
-      const temporaryState = globalThis[password];
-      const functionString = temporaryState[value];
-      const deSanitizedString = deSanitizeString(normalizeHTML(functionString));
-      delete temporaryState[value];
-      delete temporaryState[`test_${value.split('__function__')[1]}`];
+    if (value.startsWith("__function__")) {
+      const deSanitizedString = deSanitizeString(
+        normalizeHTML(value.slice(12))
+      );
       return new Function(`return ${deSanitizedString}`)();
     }
     if (value.startsWith("__RegExp__")) {
       const match = value.slice(10).match(/\/(.*?)\/([gimsuy]*)$/);
       return new RegExp(match[1], match[2]);
     }
-    if(value.startsWith("__WeakSet__")) {
+    if (value.startsWith("__WeakSet__")) {
       const temporaryState = globalThis[password];
       const revivedWeakSet = temporaryState[value];
-      delete temporaryState[value]
+      delete temporaryState[value];
       return revivedWeakSet;
     }
 
-    if(value.startsWith("__WeakMap__")) {
+    if (value.startsWith("__WeakMap__")) {
       const temporaryState = globalThis[password];
       const revivedWeakMap = temporaryState[value];
-      delete temporaryState[value]
+      delete temporaryState[value];
       return revivedWeakMap;
     }
-    return value.trim();
-  } else if (value && typeof value === 'object' && value.dataType === 'Map') {
+    return value;
+  } else if (value && typeof value === "object" && value.dataType === "Map") {
     return new Map(value.value);
-  } else if (value && typeof value === 'object' && value.dataType === 'Set') {
+  } else if (value && typeof value === "object" && value.dataType === "Set") {
     return new Set(value.value);
   } else {
     return value;
   }
-};
+}
 
 function formatKeyValuePairs(input) {
   return input.replace(/(\w+)=\${(.*?)}/g, (match, key, value) => {
@@ -164,40 +161,41 @@ function formatKeyValuePairs(input) {
 }
 
 function normalizePropPlaceholderAndUtilInTrigger(input) {
-  const regex = /\s*\$trigger\s*\(\s*([^,]+)\s*(?:,\s*([^,]+)\s*)?(?:,\s*{\s*([^{}$]+)\s*}\s*)?\s*\)/g;
+  const regex =
+    /\s*\$trigger\s*\(\s*([^,]+)\s*(?:,\s*([^,]+)\s*)?(?:,\s*{\s*([^{}$]+)\s*}\s*)?\s*\)/g;
 
   return input.replace(regex, (_, arg1, arg2, value) => {
-    const updatedArg1 = arg1.startsWith('{') ? `$${arg1}`: arg1;
-    if(arg2 === undefined) {
-      return "$trigger("+updatedArg1 +")";
+    const updatedArg1 = arg1.startsWith("{") ? `$${arg1}` : arg1;
+    if (arg2 === undefined) {
+      return "$trigger(" + updatedArg1 + ")";
     }
 
-    if(value === undefined) {
-      return "$trigger("+updatedArg1 + "," + arg2 + ")";
-    } 
-    return "$trigger("+updatedArg1 + "," + arg2 + ",'${stringify(" + value + ")}')";
+    if (value === undefined) {
+      return "$trigger(" + updatedArg1 + "," + arg2 + ")";
+    }
+    return (
+      "$trigger(" + updatedArg1 + "," + arg2 + ",'${stringify(" + value + ")}')"
+    );
   });
 }
 
 function isObject(value) {
-  return (
-    typeof value === "object" && value !== null && !Array.isArray(value)
-  );
-};
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
 
 async function checkForJsQuirks(input, component) {
   input = isPromise(input) ? await input : input;
-  if (input.includes('[object Object]')) {
+  if (input.includes("[object Object]")) {
     const errorMsg = `You are expected to pass an object or an array of object(s) with {} but you used \${} in ${component}`;
     callRenderErrorLogger(errorMsg);
   }
 
-  if (input.includes('NaN')) {
+  if (input.includes("NaN")) {
     const errorMsg = `NaN is found in ${component}`;
     callRenderErrorLogger(errorMsg);
   }
 
-  if (input.includes('undefined') | input.includes('null')) {
+  if (input.includes("undefined") | input.includes("null")) {
     const errorMsg = `undefined or null is found ${component}. Check this component for correction.`;
 
     callRenderErrorLogger(errorMsg);
@@ -210,22 +208,22 @@ function isPromise(value) {
 }
 
 const CONSTANT = {
-  cap: 'cap',
-  isFirstLetterCapped: 'isFirstLetterCapped',
-  isComponentCloseTag: 'isComponentCloseTag',
-  isNotTag: 'isNotTag'
-}
+  cap: "cap",
+  isFirstLetterCapped: "isFirstLetterCapped",
+  isComponentCloseTag: "isComponentCloseTag",
+  isNotTag: "isNotTag",
+};
 
- /**
+/**
  * remove script tag
  * @param str
  * @returns {string | * | void}
  */
- function removeScript(str){
-   return str.replace(/<script[^>]*>([^]*?)<\/script>/g, '');
- }
- 
-  /**
+function removeScript(str) {
+  return str.replace(/<script[^>]*>([^]*?)<\/script>/g, "");
+}
+
+/**
  * normalize brackets
  * @param str
  * @returns {string | * | void}
@@ -233,45 +231,45 @@ const CONSTANT = {
 function correctBracket(str) {
   return str.replace(/("[^<>\/"]*)<([^<>\/"]+)>([^<>\/"]*")/g, '"$1|$2|$3"');
 }
- 
-  /**
+
+/**
  * remove comment
  * @param str
  * @returns {string | * | void}
  */
 
- function removeComment(str) {
-   return str.replace(/<!--[^>]*-->/g, '');
- }
- 
- /**
-  * remove break line
-  * @param str
-  * @returns {string | * | void}
-  */
- function removeBreakLine(str) {
-   return str.replace(/[\r\n\t]/g, '');
- }
- 
- /**
-  * get body if available
-  * @param str
-  * @returns {*}
-  */
- function getBodyIfHave(str) {
-   const match = str.match(/<body[^>]*>([^]*)<\/body>/);
-   if (!match) {
-     return str;
-   }
-   return match[1];
- }
+function removeComment(str) {
+  return str.replace(/<!--[^>]*-->/g, "");
+}
 
-  /**
+/**
+ * remove break line
+ * @param str
+ * @returns {string | * | void}
+ */
+function removeBreakLine(str) {
+  return str.replace(/[\r\n\t]/g, "");
+}
+
+/**
+ * get body if available
+ * @param str
+ * @returns {*}
+ */
+function getBodyIfHave(str) {
+  const match = str.match(/<body[^>]*>([^]*)<\/body>/);
+  if (!match) {
+    return str;
+  }
+  return match[1];
+}
+
+/**
  * Tag regex matchers
  * @param str
  * @returns {Boolean}
  */
- function isLine(property, line){
+function isLine(property, line) {
   let patterns = {
     cap: /[A-Z]/.test(line),
     self: /<([^\s<>]+) ?([^<>]*)\/>/.test(line),
@@ -280,40 +278,42 @@ function correctBracket(str) {
     text: /<(?:\/?[A-Za-z]+\b[^>]*>|!--.*?--)>/.test(line),
     isFirstLetterCapped: /<([A-Z][A-Za-z0-9]*)/.test(line),
     isComponentCloseTag: /<\/[A-Z][A-Za-z0-9]*>/.test(line),
-    isNotTag: /^(?!<\w+\/?>$).+$/.test(line)
-  }
-  return patterns[property];
- }
-
- /**
-  * node type
-  * @type {{text: string, self: string, close: string, start: string}}
-  */
-  const NODE_TYPE = {
-    text: 'text',
-    self: 'self',
-    close: 'close',
-    // start or total
-    start: 'start',
-    element: 'element',
+    isNotTag: /^(?!<\w+\/?>$).+$/.test(line),
   };
- 
- 
+  return patterns[property];
+}
+
+/**
+ * node type
+ * @type {{text: string, self: string, close: string, start: string}}
+ */
+const NODE_TYPE = {
+  text: "text",
+  self: "self",
+  close: "close",
+  // start or total
+  start: "start",
+  element: "element",
+};
+
 /**
  * converts attributes to props
  * @param str
- * Todo: This should be made better with a proper parsing 
+ * Todo: This should be made better with a proper parsing
  * @returns {{}}
  */
- function convertAttributesToProps(str){
-  const regexToMatchProps = /([\S]+=([`"']?)(_9s35Ufa7M67wghwT_([^]*?)_9s35Ufa7M67wghwT_)\1)/g;
+function convertAttributesToProps(str) {
+  const regexToMatchProps =
+    /([\S]+=([`"']?)(_9s35Ufa7M67wghwT_([^]*?)_9s35Ufa7M67wghwT_)\1)/g;
   const matches = {};
   let match;
 
   try {
     while ((match = regexToMatchProps.exec(str)) !== null) {
       const extractedContent = match[1].match(/([^=]+)=([^]*)/);
-      const value = extractedContent[2].match(/([`"']?)(_9s35Ufa7M67wghwT_([^]*?)_9s35Ufa7M67wghwT_)\1/);
+      const value = extractedContent[2].match(
+        /([`"']?)(_9s35Ufa7M67wghwT_([^]*?)_9s35Ufa7M67wghwT_)\1/
+      );
 
       const parsedJSON = JSON.parse(value[3], reviver);
       matches[extractedContent[1]] = parsedJSON;
@@ -332,11 +332,11 @@ function correctBracket(str) {
  * @returns {{}}
  */
 
-function normalizeNumberOrBoolean(paramValue){
+function normalizeNumberOrBoolean(paramValue) {
   if (/^\d+$/.test(paramValue)) {
     return Number(paramValue);
   } else if (/^(true|false)$/.test(paramValue)) {
-    paramValue = paramValue === 'true';
+    paramValue = paramValue === "true";
     return paramValue;
   }
   return paramValue;
@@ -347,19 +347,23 @@ function normalizeNumberOrBoolean(paramValue){
  * @param str
  * @returns {{}}
  */
- function convertAttributes(str) {
+function convertAttributes(str) {
   if (!str) {
     return {};
   }
-  const extractedNonStructuredDataType = {}
+  const extractedNonStructuredDataType = {};
   const extractedObjectAndArray = convertAttributesToProps(str);
-  const regexToMatchProps = /([\S]+=([`"']?)(_9s35Ufa7M67wghwT_([^]*?)_9s35Ufa7M67wghwT_)\1)/g;
-  const _str = str.replace(regexToMatchProps, ' ');
-  const arr = _str.replace(/[\s]+/g, ' ').trim().match(/([\S]+="[^"]*")|([^\s"]+)/g);
+  const regexToMatchProps =
+    /([\S]+=([`"']?)(_9s35Ufa7M67wghwT_([^]*?)_9s35Ufa7M67wghwT_)\1)/g;
+  const _str = str.replace(regexToMatchProps, " ");
+  const arr = _str
+    .replace(/[\s]+/g, " ")
+    .trim()
+    .match(/([\S]+="[^"]*")|([^\s"]+)/g);
 
   arr.forEach((item) => {
-    if (item.indexOf('=') === -1) {
-      if(item === "/"){
+    if (item.indexOf("=") === -1) {
+      if (item === "/") {
         return;
       }
       extractedNonStructuredDataType[item] = true;
@@ -367,75 +371,72 @@ function normalizeNumberOrBoolean(paramValue){
       //just split first =
       const match = item.match(/([^=]+)=([^]*)/);
       // remove string ""
-      let paramValue = (match[2] && match[2].replace(/^"([^]*)"$/, '$1'));
-      extractedNonStructuredDataType[match[1]] = normalizeNumberOrBoolean(paramValue);
+      let paramValue = match[2] && match[2].replace(/^"([^]*)"$/, "$1");
+      extractedNonStructuredDataType[match[1]] =
+        normalizeNumberOrBoolean(paramValue);
     }
   });
   const props = {
-    ...extractedObjectAndArray, 
-    ...extractedNonStructuredDataType
-  }; 
+    ...extractedObjectAndArray,
+    ...extractedNonStructuredDataType,
+  };
 
   return props;
 }
 
- /**
-  * check for component
-  * @param str
-  * @returns boolean
-  */
- function isComponent(line){
-  if(!isLine(CONSTANT.isFirstLetterCapped, line)){
+/**
+ * check for component
+ * @param str
+ * @returns boolean
+ */
+function isComponent(line) {
+  if (!isLine(CONSTANT.isFirstLetterCapped, line)) {
     return false;
   }
   return true;
- }
+}
 
- /**
+/**
  * Normalize html tags
  * @param str
  * @returns {string | * | void}
  */
-function normalizeHTML(str){
-  return correctBracket(
-    getBodyIfHave(
-      removeComment(
-        removeScript(str)
-      )
-    )
-  );
+function normalizeHTML(str) {
+  return correctBracket(getBodyIfHave(removeComment(removeScript(str))));
 }
 
-async function parseChildrenComponents (extensibleStr, currentElement) {
+async function parseChildrenComponents(extensibleStr, currentElement) {
   const line = currentElement;
   const regularMatch = line.match(/<([^\s<>]+) ?([^<>]*)>/);
   const selfClosingMatch = line.match(/<([^\s<>]+) ?([^<>]*)\/>/);
-  
+
   const node = regularMatch ? regularMatch : selfClosingMatch;
   const dependencies = {
-    tagName: node[1], 
-    props: convertAttributes(deSanitizeString(node[2])), 
-    children: selfClosingMatch ? '' : '__placeholder'
+    tagName: node[1],
+    props: convertAttributes(deSanitizeString(node[2])),
+    children: selfClosingMatch ? "" : "__placeholder",
   };
 
   try {
     let calledComponent = await callComponent(dependencies);
-    const component = normalizeHTML(sanitizeOpeningTagAttributes(calledComponent));
+    const component = normalizeHTML(
+      sanitizeOpeningTagAttributes(calledComponent)
+    );
 
     const indexOfCurrentElement = extensibleStr.indexOf(currentElement);
     const result = component.split(/(<[^<>]+>)/);
 
-    if(indexOfCurrentElement !== -1) {
+    if (indexOfCurrentElement !== -1) {
       extensibleStr.splice(indexOfCurrentElement, 1, ...result);
       return extensibleStr;
     }
-  } catch(error){
+  } catch (error) {
     callRenderErrorLogger(error);
     console.error(error);
   }
-};
+}
 
- /**
+/**
  * sanitizes string
  * @param str
  * @returns {string | * | void}
@@ -447,20 +448,29 @@ function convertStackOfHTMLToString(stack) {
     stack.forEach((node, index) => {
       // text node
       const trimmedNode = node.trim();
-      if(isLine(NODE_TYPE.close, node)) {
-        if(isLine(CONSTANT.isComponentCloseTag, trimmedNode)) {
-          html+='</div>';
-        } else if(!isLine(CONSTANT.isFirstLetterCapped, trimmedNode) && stack[index - 1] === '__placeholder'){
-          html+='';
-        } else if(!isLine(CONSTANT.isFirstLetterCapped, trimmedNode) && stack[index - 1].trim() !== '__placeholder'){
-          html+=trimmedNode;
-        } 
+      if (isLine(NODE_TYPE.close, node)) {
+        if (isLine(CONSTANT.isComponentCloseTag, trimmedNode)) {
+          html += "</div>";
+        } else if (
+          !isLine(CONSTANT.isFirstLetterCapped, trimmedNode) &&
+          stack[index - 1] === "__placeholder"
+        ) {
+          html += "";
+        } else if (
+          !isLine(CONSTANT.isFirstLetterCapped, trimmedNode) &&
+          stack[index - 1].trim() !== "__placeholder"
+        ) {
+          html += trimmedNode;
+        }
         // html+=node;
-      } else if(trimmedNode === ","){
-        html+="";
-      } else if(isLine(NODE_TYPE.start, trimmedNode)) {
+      } else if (trimmedNode === ",") {
+        html += "";
+      } else if (isLine(NODE_TYPE.start, trimmedNode)) {
         html += trimmedNode;
-      } else if(isLine(CONSTANT.isNotTag, trimmedNode) && trimmedNode.trim() !== '__placeholder') {
+      } else if (
+        isLine(CONSTANT.isNotTag, trimmedNode) &&
+        trimmedNode !== "__placeholder"
+      ) {
         html += trimmedNode;
       }
     });
@@ -469,12 +479,12 @@ function convertStackOfHTMLToString(stack) {
 }
 
 /**
-* parses html and jsx
-* @param str
-* @returns {*}
-*/
-async function parseComponent (str) {
-  //open tag matching pattern 
+ * parses html and jsx
+ * @param str
+ * @returns {*}
+ */
+async function parseComponent(str) {
+  //open tag matching pattern
   const pattern = /(<[^<>]+>)/;
   if (!str) {
     return null;
@@ -484,14 +494,17 @@ async function parseComponent (str) {
     let extensibleStr = str.split(pattern);
     const stack = [];
     let depth = 0;
-    while (extensibleStr.length > depth ) {
-    const currentElement = extensibleStr[depth].trim()
-      if(currentElement === '') {
-        depth++
+    while (extensibleStr.length > depth) {
+      const currentElement = extensibleStr[depth].trim();
+      if (currentElement === "") {
+        depth++;
         continue;
-      } 
-      if(isComponent(currentElement)){
-        extensibleStr = await parseChildrenComponents(extensibleStr, currentElement);
+      }
+      if (isComponent(currentElement)) {
+        extensibleStr = await parseChildrenComponents(
+          extensibleStr,
+          currentElement
+        );
       } else {
         stack.push(deSanitizeOpeningTagAttributes(currentElement));
         depth++;
@@ -502,8 +515,7 @@ async function parseComponent (str) {
     callRenderErrorLogger(error);
     console.error(error);
   }
-  
-};
+}
 
 /**
  * Call a component with or without props
@@ -511,153 +523,165 @@ async function parseComponent (str) {
  * @returns {function}
  */
 async function callComponent(element) {
-  
   try {
     const component = globalThis[element.tagName];
     const children = element.children;
     let props = element.props;
 
-    if(Object.keys(props).length === 0 && !element.children) {
+    if (Object.keys(props).length === 0 && !element.children) {
       return checkForJsQuirks(component(), component);
     } else {
-     /*  if(isObject(props) && 
+      /*  if(isObject(props) && 
          isObject(props[Object.keys(props)[0]]) &&
          Object.keys(props).length === 1){
           props = props[Object.keys(props)[0]];
       } */
 
-      if(element.children){
+      if (element.children) {
         props.children = children;
       }
 
       const calledComponent = checkForJsQuirks(component(props), component);
-      const resolvedComponent = isPromise(calledComponent) ? await calledComponent : calledComponent;
+      const resolvedComponent = isPromise(calledComponent)
+        ? await calledComponent
+        : calledComponent;
       return resolvedComponent;
-    } 
+    }
   } catch (error) {
     const componentName = element.tagName;
-    callRenderErrorLogger({error, component: componentName });
-    console.error(`${ error } in ${globalThis[element.tagName] ? globalThis[element.tagName] : element.tagName}`);
+    callRenderErrorLogger({ error, component: componentName });
+    console.error(
+      `${error} in ${
+        globalThis[element.tagName]
+          ? globalThis[element.tagName]
+          : element.tagName
+      }`
+    );
   }
-};
+}
 
 /**
-* process JSX from html
-* @param str
-* @constructor
-*/
-async function processJSX (str) {
-   let _str = str || '';
-   try {
+ * process JSX from html
+ * @param str
+ * @constructor
+ */
+async function processJSX(str) {
+  let _str = str || "";
+  try {
     _str = normalizeHTML(_str);
     const a = await parseComponent(_str);
     return a;
-   } catch (error) {
+  } catch (error) {
     callRenderErrorLogger(error);
     console.error(error);
-   }
- };
+  }
+}
 
-if(typeof document !== 'undefined'){
-   _$ = document.querySelectorAll.bind(document);
+if (typeof document !== "undefined") {
+  _$ = document.querySelectorAll.bind(document);
 }
 /**
-* @desc Checking rendering environment
-* @param void
-* @returns boolean
-*/
+ * @desc Checking rendering environment
+ * @param void
+ * @returns boolean
+ */
 const isBrowser = (_) => {
-// Check if the environment is Node.js
-  if (typeof process === "object" &&
-      typeof require === "function") {
-      return false;
+  // Check if the environment is Node.js
+  if (typeof process === "object" && typeof require === "function") {
+    return false;
   }
   // Check if the environment is a
   // Service worker
   if (typeof importScripts === "function") {
-      return false;
+    return false;
   }
   // Check if the environment is a Browser
   if (typeof globalThis === "object") {
-      return true;
+    return true;
   }
-}
+};
 function isInitialLetterUppercase(func, context) {
-  if(typeof func !== 'function') {
-    throw(`Use ${context}(functionName, arg) instead of ${context}(funcationName(arg)) or the first argument you provided is a function.`)
+  if (typeof func !== "function") {
+    throw `Use ${context}(functionName, arg) instead of ${context}(funcationName(arg)) or the first argument you provided is a function.`;
   }
   const initialLetter = func.name.charAt(0);
   return initialLetter === initialLetter.toUpperCase();
 }
 
- /**
-  * @desc renders component
-  * @param component string
-  * @returns string || void (mutates the DOM)
-  */
+/**
+ * @desc renders component
+ * @param component string
+ * @returns string || void (mutates the DOM)
+ */
 
-  async function $render(component, props) {
-    if(!isInitialLetterUppercase(component, '$render')){
-      throw new Error('A component must start with a capital letter')
-    }
-
-    const updatedComponent = makeFunctionFromString(component.toString());
-
-    try {
-      if(isBrowser() && typeof document !== 'undefined'){
-        let renderedApp;
-        if(document.readyState === 'complete'){
-          executeFallback(updatedComponent.toString());
-          renderedApp = await handleClientRendering(updatedComponent, props);
-          return renderedApp
-        } else {
-          window.addEventListener('DOMContentLoaded', async () => {
-            renderedApp = await handleClientRendering(updatedComponent, props);
-            return renderedApp;
-          })
-        }
-      }
-      const resolvedComponent = await resolveComponent(updatedComponent, props)
-      const result = await processJSX(sanitizeOpeningTagAttributes(resolvedComponent));
-      return result;
-    } catch (error) {
-
-      callRenderErrorLogger({ error, component });
-      console.error(`${error} in ${globalThis[component.name] ? globalThis[component.name] : component.name}`);
-
-    }
+async function $render(component, props) {
+  if (!isInitialLetterUppercase(component, "$render")) {
+    throw new Error("A component must start with a capital letter");
   }
 
- /**
-  * Main processor to process JSX from html
-  * @param component:function, arg: any
-  * @return 
-  */
-async function resolveComponent(component, arg){
-  const props = (typeof arg === 'function') ? arg : $purify(arg);
-  let resolvedComponent = arg ?  component(props) : component();
-  
-  if(isPromise(resolvedComponent)){
+  const updatedComponent = makeFunctionFromString(component.toString());
+
+  try {
+    if (isBrowser() && typeof document !== "undefined") {
+      let renderedApp;
+      if (document.readyState === "complete") {
+        executeFallback(updatedComponent.toString());
+        renderedApp = await handleClientRendering(updatedComponent, props);
+        return renderedApp;
+      } else {
+        window.addEventListener("DOMContentLoaded", async () => {
+          renderedApp = await handleClientRendering(updatedComponent, props);
+          return renderedApp;
+        });
+      }
+    }
+    const resolvedComponent = await resolveComponent(updatedComponent, props);
+    const result = await processJSX(
+      sanitizeOpeningTagAttributes(resolvedComponent)
+    );
+    return result;
+  } catch (error) {
+    callRenderErrorLogger({ error, component });
+    console.error(
+      `${error} in ${
+        globalThis[component.name] ? globalThis[component.name] : component.name
+      }`
+    );
+  }
+}
+
+/**
+ * Main processor to process JSX from html
+ * @param component:function, arg: any
+ * @return
+ */
+async function resolveComponent(component, arg) {
+  const props = typeof arg === "function" ? arg : $purify(arg);
+  let resolvedComponent = arg ? component(props) : component();
+
+  if (isPromise(resolvedComponent)) {
     const result = await resolvedComponent;
     return result;
   }
 
-  if(typeof resolvedComponent !== 'string'){
-    throw('A component must return a string');
+  if (typeof resolvedComponent !== "string") {
+    throw "A component must return a string";
   }
 
   return checkForJsQuirks(resolvedComponent, component);
 }
-function isFetcher(parsedComponent){
-  if(parsedComponent.dataset.append ||
-     parsedComponent.dataset.prepend ||
-     parsedComponent.dataset.replace){
+function isFetcher(parsedComponent) {
+  if (
+    parsedComponent.dataset.append ||
+    parsedComponent.dataset.prepend ||
+    parsedComponent.dataset.replace
+  ) {
     return true;
   }
   return false;
 }
 
-function extractFetcherAttributes(functionString){
+function extractFetcherAttributes(functionString) {
   const fallbackMatcher = /data-(fallback)="([^"]*)"/;
   const componentMatcher = /data-(replace|prepend|append)="([^"]*)/;
 
@@ -666,176 +690,219 @@ function extractFetcherAttributes(functionString){
   const matchedFallback = fallbackMatcher.exec(functionString);
   const matchedComponent = componentMatcher.exec(functionString);
 
-  matchedFallback ? fetcherAttributes[matchedFallback[1]] = matchedFallback[2] : fetcherAttributes["data-fallback"] = matchedFallback;
-  matchedComponent ? fetcherAttributes["componentId"] = matchedComponent[2] : fetcherAttributes["componentId"] = matchedComponent;
+  matchedFallback
+    ? (fetcherAttributes[matchedFallback[1]] = matchedFallback[2])
+    : (fetcherAttributes["data-fallback"] = matchedFallback);
+  matchedComponent
+    ? (fetcherAttributes["componentId"] = matchedComponent[2])
+    : (fetcherAttributes["componentId"] = matchedComponent);
   fetcherAttributes["action"] = matchedComponent ? matchedComponent[1] : null;
 
   return fetcherAttributes;
 }
 
-function executeFallback(value){  
+function executeFallback(value) {
   const fetcherAttributes = extractFetcherAttributes(value.toString());
-  if (fetcherAttributes.componentId && fetcherAttributes.componentId.startsWith('#')){ 
-    const targetComponent = document.querySelector(fetcherAttributes.componentId);
-    const component = globalThis[fetcherAttributes['fallback']];
-    const modifiedComponent = component ? makeFunctionFromString(component.toString()) : '';
-    const fallback = document.createElement('div');
-    fallback.id = 'render-fallback';
-    const content = `${(modifiedComponent && fetcherAttributes.componentId) ? modifiedComponent(targetComponent.id): 'Loading...'}`;
-    
-    const resolvedDefaultFallback = !component && fetcherAttributes['fallback'] ? fetcherAttributes['fallback'] : content;
+  if (
+    fetcherAttributes.componentId &&
+    fetcherAttributes.componentId.startsWith("#")
+  ) {
+    const targetComponent = document.querySelector(
+      fetcherAttributes.componentId
+    );
+    const component = globalThis[fetcherAttributes["fallback"]];
+    const modifiedComponent = component
+      ? makeFunctionFromString(component.toString())
+      : "";
+    const fallback = document.createElement("div");
+    fallback.id = "render-fallback";
+    const content = `${
+      modifiedComponent && fetcherAttributes.componentId
+        ? modifiedComponent(targetComponent.id)
+        : "Loading..."
+    }`;
 
-    fallback.innerHTML = resolvedDefaultFallback ;
-    fetcherAttributes.action == 'prepend' ? targetComponent.prepend(fallback) : targetComponent.append(fallback);
+    const resolvedDefaultFallback =
+      !component && fetcherAttributes["fallback"]
+        ? fetcherAttributes["fallback"]
+        : content;
+
+    fallback.innerHTML = resolvedDefaultFallback;
+    fetcherAttributes.action == "prepend"
+      ? targetComponent.prepend(fallback)
+      : targetComponent.append(fallback);
     return true;
-  };
-}
-
-function removeFallback(target){
-  if(!target){ return false }
-  const fallback = document.querySelector(`${target}>#render-fallback`);
-  fallback.remove();
-  return true
-}
-
-function insertElementsIntoParent(parent, elements, parseComponent){
-  if(parent && elements && isBrowser()){
-    const fragment = document.createDocumentFragment();
-    elements.forEach(element => {
-      if(element instanceof Node){
-        fragment.appendChild(element);
-      }
-    })
-
-    if(parseComponent.dataset.append){
-      parent.appendChild(fragment);
-    } else if(parseComponent.dataset.prepend) {
-      parent.prepend(fragment);
-    }
-
-  } else {
-    const errorMsg = `Invalid parameters. You need to add data-render="defer" to the wrapping div of a component to defer its execution to the client or you need to add data-replace, data-append or data-prepend to the target container to update the content of a fetcher. Solution: (link to docs)`
-    error.messge += errorMsg
-    callRenderErrorLogger(error);
-    console.error(error);
-
   }
 }
 
-function stopIfNotStartWithHash(selector, insertionType){
+function removeFallback(target) {
+  if (!target) {
+    return false;
+  }
+  const fallback = document.querySelector(`${target}>#render-fallback`);
+  fallback.remove();
+  return true;
+}
+
+function insertElementsIntoParent(parent, elements, parseComponent) {
+  if (parent && elements && isBrowser()) {
+    const fragment = document.createDocumentFragment();
+    elements.forEach((element) => {
+      if (element instanceof Node) {
+        fragment.appendChild(element);
+      }
+    });
+
+    if (parseComponent.dataset.append) {
+      parent.appendChild(fragment);
+    } else if (parseComponent.dataset.prepend) {
+      parent.prepend(fragment);
+    }
+  } else {
+    const errorMsg = `Invalid parameters. You need to add data-render="defer" to the wrapping div of a component to defer its execution to the client or you need to add data-replace, data-append or data-prepend to the target container to update the content of a fetcher. Solution: (link to docs)`;
+    error.messge += errorMsg;
+    callRenderErrorLogger(error);
+    console.error(error);
+  }
+}
+
+function stopIfNotStartWithHash(selector, insertionType) {
   if (!/^#/.test(selector)) {
-    callRenderErrorLogger({ error, selector, message: `${insertionType}value must start with #` });
+    callRenderErrorLogger({
+      error,
+      selector,
+      message: `${insertionType}value must start with #`,
+    });
     console.error(`${insertionType} value must start with #`);
-  } 
+  }
 }
 
 function sanitizeOpeningTagAttributes(tag) {
   const regex = /(\w+)=("[^"]*"|'[^']*')/g;
-    return normalizeHTML(tag.replace(regex, (match, attributeName, attributeValue) => {
+  return normalizeHTML(
+    tag.replace(regex, (match, attributeName, attributeValue) => {
       const sanitizedValue = attributeValue
-                             .replace(/</g, '&lt;')
-                             .replace(/>/g, '&gt;');//make this to not affect arrow function's '=>' and if it works sanitizeString should be enough
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;"); //make this to not affect arrow function's '=>' and if it works sanitizeString should be enough
       return `${attributeName}=${sanitizedValue}`;
-  }));
+    })
+  );
 }
 function deSanitizeOpeningTagAttributes(tag) {
   const regex = /(\w+)=("[^"]*"|'[^']*')/g;
-    return normalizeHTML(tag.replace(regex, (match, attributeName, attributeValue) => {
+  return normalizeHTML(
+    tag.replace(regex, (match, attributeName, attributeValue) => {
       const sanitizedValue = attributeValue
-                             .replace(/&lt;/g, '<')
-                             .replace(/&gt;/g, '>');
+        .replace(/&lt;/g, "<")
+        .replace(/&gt;/g, ">");
       return `${attributeName}=${sanitizedValue}`;
-  }));
+    })
+  );
 }
 
 /**
-  * @desc renders client component
-  * @param component func
-  * @param arg any
-  * @returns void (mutates the DOM)
-  */
- async function handleClientRendering(component, arg){
-
+ * @desc renders client component
+ * @param component func
+ * @param arg any
+ * @returns void (mutates the DOM)
+ */
+async function handleClientRendering(component, arg) {
   const parser = new DOMParser();
   const resolvedComponent = await resolveComponent(component, arg);
-  if(!resolvedComponent) {return resolvedComponent };
+  if (!resolvedComponent) {
+    return resolvedComponent;
+  }
 
   let processedComponent = await processJSX(
     sanitizeOpeningTagAttributes(resolvedComponent)
-  );  
+  );
 
   const componentEl = parser.parseFromString(processedComponent, "text/html");
   const parsedComponent = componentEl.querySelector("body > div");
-  
-  if(!parsedComponent) {
-    throw 'A component must be wrapped with a <div> (nothing else)';
+
+  if (!parsedComponent) {
+    throw "A component must be wrapped with a <div> (nothing else)";
   }
 
-  if(parsedComponent.id === ""){
-    throw 'A reRenderable component wrapping div must have an ID';
+  if (parsedComponent.id === "") {
+    throw "A reRenderable component wrapping div must have an ID";
   }
 
-  let el = $el(parsedComponent.id);//current component
+  let el = $el(parsedComponent.id); //current component
   if (el && !isFetcher(parsedComponent)) {
     el.parentNode.replaceChild(parsedComponent, el);
-  } else if(el && el.dataset.render === "defer"){
+  } else if (el && el.dataset.render === "defer") {
     el.parentNode.replaceChild(parsedComponent, el);
-  } else if(el && parsedComponent.dataset.replace) {
-    stopIfNotStartWithHash(parsedComponent.dataset.replace, 'data.replace');
+  } else if (el && parsedComponent.dataset.replace) {
+    stopIfNotStartWithHash(parsedComponent.dataset.replace, "data.replace");
     el.parentNode.replaceChild(parsedComponent, el);
-
-  } else if(el && parsedComponent.dataset.append) {
+  } else if (el && parsedComponent.dataset.append) {
     removeFallback(parsedComponent.dataset.append);
-    stopIfNotStartWithHash(parsedComponent.dataset.append, 'data.append');
+    stopIfNotStartWithHash(parsedComponent.dataset.append, "data.append");
     const component = $select(`${parsedComponent.dataset.append}`);
-    const latestChildren = parsedComponent.querySelectorAll(`${parsedComponent.dataset.append}> *`);
+    const latestChildren = parsedComponent.querySelectorAll(
+      `${parsedComponent.dataset.append}> *`
+    );
     insertElementsIntoParent(component, latestChildren, parsedComponent);
-
-  } else if(el && parsedComponent.dataset.prepend) {
+  } else if (el && parsedComponent.dataset.prepend) {
     removeFallback(parsedComponent.dataset.prepend);
-    stopIfNotStartWithHash(parsedComponent.dataset.prepend, 'data.prepend');
+    stopIfNotStartWithHash(parsedComponent.dataset.prepend, "data.prepend");
     const component = $select(`${parsedComponent.dataset.prepend}`);
-    const latestChildren = parsedComponent.querySelectorAll(`${parsedComponent.dataset.prepend}> *`);
+    const latestChildren = parsedComponent.querySelectorAll(
+      `${parsedComponent.dataset.prepend}> *`
+    );
     insertElementsIntoParent(component, latestChildren, parsedComponent);
-
   } else {
     useRoot(processedComponent);
   }
   return processedComponent;
 }
 
-
-function makeFunctionFromString(functionString){
+function makeFunctionFromString(functionString) {
   return Function(`return ${replaceValueWithStringify(functionString)}`)();
 }
 
 function replaceValueWithStringify(functionString) {
   let func = formatKeyValuePairs(functionString);
-  func = func.replace(/(\w+)=["']?\{([^'$][^{}]+)\}["']?/g
-  , (match, key, value) => {
-      return key + "=" + "${stringify(" + value + ")}";     
-  });
+  func = func.replace(
+    /(\w+)=["']?\{([^'$][^{}]+)\}["']?/g,
+    (match, key, value) => {
+      return key + "=" + "${stringify(" + value + ")}";
+    }
+  );
 
-  func = func.replace(/(\w+)="\s*\$render\s*\(([^{}]+)\,\s*\{\s*([^{}]+)\s*\}\s*\)\s*"/g, (match, key, component, prop) => {
-    return key + '="' + '$render(' + component + ',' + "'${stringify(" + prop + ")}')" + '"';  
-  });
+  func = func.replace(
+    /(\w+)="\s*\$render\s*\(([^{}]+)\,\s*\{\s*([^{}]+)\s*\}\s*\)\s*"/g,
+    (match, key, component, prop) => {
+      return (
+        key +
+        '="' +
+        "$render(" +
+        component +
+        "," +
+        "'${stringify(" +
+        prop +
+        ")}')" +
+        '"'
+      );
+    }
+  );
   return normalizePropPlaceholderAndUtilInTrigger(func);
-  ;
 }
 
- /**
-  * Push function to the global scope
-  * @param agrs functions
-  * @return boolean
-  */
+/**
+ * Push function to the global scope
+ * @param agrs functions
+ * @return boolean
+ */
 function $register(...args) {
   const components = [...args];
   let depth = 0;
-  
-  while(components.length > depth){
+
+  while (components.length > depth) {
     const component = components[depth];
-    if(typeof component !== 'function') {
-      throw('Only function is expected');
+    if (typeof component !== "function") {
+      throw "Only function is expected";
     }
     globalThis[component.name] = makeFunctionFromString(component.toString());
     depth++;
@@ -844,43 +911,47 @@ function $register(...args) {
 }
 
 function callFunctionWithElementsAndData(func, anchors, data) {
-  if(typeof func === 'function'){
-
-    if(!anchors && !data){
+  if (typeof func === "function") {
+    if (!anchors && !data) {
       return func();
     }
 
-    if(!anchors && data){
+    if (!anchors && data) {
       return func($purify(data));
-    } 
+    }
 
-    const elements = typeof anchors !== 'string' ? anchors : $select(anchors);
+    const elements = typeof anchors !== "string" ? anchors : $select(anchors);
 
     const result = !data ? func(elements) : func(elements, $purify(data));
     return result;
   }
 
-  throw(`There is an error in ${func.name ?? func} or the first argument passed to $trigger is not a function`);
+  throw `There is an error in ${
+    func.name ?? func
+  } or the first argument passed to $trigger is not a function`;
 }
-function $trigger(func, anchors, data){
-
+function $trigger(func, anchors, data) {
   if (!isBrowser()) {
-    throw('You cannot use $trigger on the server');
+    throw "You cannot use $trigger on the server";
   }
 
   try {
-    if(isBrowser() && typeof document !== 'undefined'){
-      if(document.readyState === 'complete'){
+    if (isBrowser() && typeof document !== "undefined") {
+      if (document.readyState === "complete") {
         return callFunctionWithElementsAndData(func, anchors, data);
       } else {
-        window.addEventListener('load', ()=> {
+        window.addEventListener("load", () => {
           return callFunctionWithElementsAndData(func, anchors, data);
-        })
+        });
       }
-    } 
+    }
   } catch (error) {
     callRenderErrorLogger(error);
-    console.error(`${error} but ${func.name ? `${typeof func.name}` : typeof func} is provided in ${func.name ?? func}`);
+    console.error(
+      `${error} but ${
+        func.name ? `${typeof func.name}` : typeof func
+      } is provided in ${func.name ?? func}`
+    );
   }
 }
 function $el(elementId) {
@@ -891,10 +962,15 @@ function useRoot(component) {
   $el("root").innerHTML = component;
 }
 
-function stringify(props){
+function stringify(props) {
   try {
-    if(typeof props === 'string' && props.includes('NaN') | props.includes('[object Object]') | props.includes('undefined')) {
-      return '';
+    if (
+      typeof props === "string" &&
+      props.includes("NaN") |
+        props.includes("[object Object]") |
+        props.includes("undefined")
+    ) {
+      return "";
     }
 
     const data = JSON.stringify(props, replacer);
@@ -906,15 +982,19 @@ function stringify(props){
   }
 }
 
-function convertToPropSystem(str){
-  const regex = /([`"']?)(_9s35Ufa7M67wghwT_([^]*?)_9s35Ufa7M67wghwT_)\1/g
+function convertToPropSystem(str) {
+  const regex = /([`"']?)(_9s35Ufa7M67wghwT_([^]*?)_9s35Ufa7M67wghwT_)\1/g;
   let match = regex.exec(str);
-  if(match) {
+  if (match) {
     try {
-      if(match[3].includes('\"null\"') | match[3].includes('\"[object Object]\"') | match[3].includes('\"NaN\"')) {
-        callRenderErrorLogger({error});
-        return '';
-      };
+      if (
+        match[3].includes('"null"') |
+        match[3].includes('"[object Object]"') |
+        match[3].includes('"NaN"')
+      ) {
+        callRenderErrorLogger({ error });
+        return "";
+      }
       const parsedJSON = JSON.parse(match[3], reviver);
       return parsedJSON;
     } catch (error) {
@@ -925,79 +1005,87 @@ function convertToPropSystem(str){
   return JSON.parse(str, reviver);
 }
 
-function $purify(props){
+function $purify(props) {
   try {
-    if(typeof props !== 'string') {
+    if (typeof props !== "string") {
       return props;
-    } else if(typeof props === 'string'){
+    } else if (typeof props === "string") {
       const isCrude = /^(_9s35Ufa7M67wghwT_)/.test(props);
-      if(!isCrude && props !== 'undefined'){
+      if (!isCrude && props !== "undefined") {
         return props;
-      } else if (props.includes('null') | props.includes('undefined') | props.includes('NaN') | props.includes('[object Object]')) {
-        return '';
+      } else if (
+        props.includes("null") |
+        props.includes("undefined") |
+        props.includes("NaN") |
+        props.includes("[object Object]")
+      ) {
+        return "";
       }
     }
     return convertToPropSystem(deSanitizeString(props));
   } catch (error) {
     callRenderErrorLogger(error);
-    console.error(error)
+    console.error(error);
   }
 }
 
-function buildDataStructureFrom(queryString){  
+function buildDataStructureFrom(queryString) {
   let [selector, constraints] = resolveActionAndConstraints(queryString);
 
-  if(constraints === undefined){
+  if (constraints === undefined) {
     return [selector];
   }
 
-  if(/(\S+|\[\S+\])\[(\d+)\]/.test(queryString)){
+  if (/(\S+|\[\S+\])\[(\d+)\]/.test(queryString)) {
     return [selector, constraints];
   }
-  constraints = resolveMultipleAttributes(constraints.split(','))
+  constraints = resolveMultipleAttributes(constraints.split(","));
   return [selector, constraints];
 }
 
-function resolveActionAndConstraints(queryString){
+function resolveActionAndConstraints(queryString) {
   const regex = /(\S+|\[\S+\])\[(\d+)\]/;
   const match = queryString.match(regex);
 
-  if(match){
+  if (match) {
     return [match[1], match[2]];
   }
 
-  if(!queryString.includes('|') || queryString.includes('|=')){
+  if (!queryString.includes("|") || queryString.includes("|=")) {
     return [queryString.trim(), undefined];
   }
 
-  const splittedQuery = queryString.split('[').filter(Boolean);
-  if(splittedQuery.length === 2){
-    const selector = splittedQuery[0].endsWith(']') ? `[${splittedQuery[0]}` : splittedQuery[0];
-    const constraints = splittedQuery[1].split(']')[0];
+  const splittedQuery = queryString.split("[").filter(Boolean);
+  if (splittedQuery.length === 2) {
+    const selector = splittedQuery[0].endsWith("]")
+      ? `[${splittedQuery[0]}`
+      : splittedQuery[0];
+    const constraints = splittedQuery[1].split("]")[0];
     return [selector.trim(), constraints.trim()];
   }
 
   const selector = `${splittedQuery[0]}[${splittedQuery[1]}`;
-  const constraints = splittedQuery[2].split(']')[0];
+  const constraints = splittedQuery[2].split("]")[0];
   return [selector.trim(), constraints.trim()];
 }
 
-function resolveMultipleAttributes (constraints){
-
+function resolveMultipleAttributes(constraints) {
   let processedConstraints = [];
   let depth = 0;
-  while(depth < constraints.length){
-    let splittedConstraints = constraints[depth].split('|').filter(Boolean);
+  while (depth < constraints.length) {
+    let splittedConstraints = constraints[depth].split("|").filter(Boolean);
     const [action, paramString] = splittedConstraints;
-    const param = paramString.split(/(\w+)(\!=|\-=|\+=|=\*|>=?|<=?|={1,2})(.+)/).filter(Boolean);
+    const param = paramString
+      .split(/(\w+)(\!=|\-=|\+=|=\*|>=?|<=?|={1,2})(.+)/)
+      .filter(Boolean);
     processedConstraints.push([action.trim(), param]);
-    depth++
+    depth++;
   }
   return processedConstraints;
 }
- 
+
 function $select(str, offSuperpowers = false) {
-  if(!isBrowser()) throw new Error('You cannot use $select on the server');
+  if (!isBrowser()) throw new Error("You cannot use $select on the server");
   if (typeof str !== "string" || str === "") {
     throw new Error("$select expects a string of selectors");
   }
@@ -1006,15 +1094,18 @@ function $select(str, offSuperpowers = false) {
     const selectors = str.split(/,(?![^\[]*\])/);
     let elements = [];
     let depth = 0;
-    
-    while(selectors.length > depth){
+
+    while (selectors.length > depth) {
       const selectorWithConstraints = selectors[depth];
-      const [selector, constraints] = buildDataStructureFrom(selectorWithConstraints);
+      const [selector, constraints] = buildDataStructureFrom(
+        selectorWithConstraints
+      );
 
       const nestedElements = _$(selector);
 
       const modifiedElements = applyAction(nestedElements, constraints);
-      const numberOfElementsSelected = modifiedElements === undefined ? undefined : modifiedElements.length;
+      const numberOfElementsSelected =
+        modifiedElements === undefined ? undefined : modifiedElements.length;
       if (numberOfElementsSelected && !offSuperpowers) {
         //turn grouped elements to a real array
         const iterableGroupedElements = [...modifiedElements];
@@ -1023,76 +1114,81 @@ function $select(str, offSuperpowers = false) {
         elements.push(modifiedElements);
       } else {
         elements.push(modifiedElements);
-      } 
-      depth++
+      }
+      depth++;
     }
-    if(elements[0].length === 0) return null;
-    return (elements && elements.length === 1) ? elements[0] : elements;
+    if (elements[0].length === 0) return null;
+    return elements && elements.length === 1 ? elements[0] : elements;
   } catch (error) {
     callRenderErrorLogger(error);
-    console.error(`Oops! Check the selector(s) '${str}' provided for validity because it seems the target is not found. Or you can't use $select on the server.`);
+    console.error(
+      `Oops! Check the selector(s) '${str}' provided for validity because it seems the target is not found. Or you can't use $select on the server.`
+    );
   }
-
 }
 
 function applyAction(elements, constraints) {
-  
-  if (typeof constraints === 'string' && elements.length !== 0) return elements[constraints];
+  if (typeof constraints === "string" && elements.length !== 0)
+    return elements[constraints];
   if (!constraints && elements.length === 1) return elements[0];
   if (!constraints && elements.length > 1) return elements;
 
   let depth = 0;
   let result = elements;
 
-  while(constraints && depth < constraints.length){
-    const [action, constraint] = constraints[depth]
-    if (action === 'delete') {
+  while (constraints && depth < constraints.length) {
+    const [action, constraint] = constraints[depth];
+    if (action === "delete") {
       result = del(result, constraints[depth]);
-    } else if (action === 'sort') {
-      result = sortElements(result, constraints[depth])
-    } else if (action.includes('filter')) {
+    } else if (action === "sort") {
+      result = sortElements(result, constraints[depth]);
+    } else if (action.includes("filter")) {
       result = filter(result, constraints[depth]);
-    } else if (constraints !== undefined){
+    } else if (constraints !== undefined) {
       result = setAttribute(result, constraints[depth]);
     }
     depth++;
   }
-  
+
   return result;
 }
 
-function fuzzyCompare (a, b, tolerance = 0.01) {
+function fuzzyCompare(a, b, tolerance = 0.01) {
   if (!isNaN(a) && !isNaN(b)) {
-    const tolerance = 0.01
+    const tolerance = 0.01;
     return Math.abs(Number(a) - Number(b)) <= tolerance;
   } else {
-    return a.toLowerCase().includes(b.toLowerCase()) || b.toLowerCase().includes(a.toLowerCase());
+    return (
+      a.toLowerCase().includes(b.toLowerCase()) ||
+      b.toLowerCase().includes(a.toLowerCase())
+    );
   }
-};
+}
 
 const operators = {
-  '=*': (key, element, value) => fuzzyCompare(element[key], value),
-  '>': (key, element, value) => element[key] > value,
-  '<': (key, element, value) => element[key] < value,
-  '=': (key, element, value) => element[key] === value,
-  '<=': (key, element, value) => element[key] <= value,
-  '>=': (key, element, value) => element[key] >= value,
-  '!=': (key, element, value) => element[key] !== value,
-  '+=': (key, element, value) => Number(element[key]) + Number(value),
-  '-=': (key, element, value) => Number(element[key]) - Number(value)
-}
+  "=*": (key, element, value) => fuzzyCompare(element[key], value),
+  ">": (key, element, value) => element[key] > value,
+  "<": (key, element, value) => element[key] < value,
+  "=": (key, element, value) => element[key] === value,
+  "<=": (key, element, value) => element[key] <= value,
+  ">=": (key, element, value) => element[key] >= value,
+  "!=": (key, element, value) => element[key] !== value,
+  "+=": (key, element, value) => Number(element[key]) + Number(value),
+  "-=": (key, element, value) => Number(element[key]) - Number(value),
+};
 
 function del(elements, constraints) {
   const [action, params] = constraints;
   const [key, operator, value] = params;
-  const result = []
+  const result = [];
 
   for (let index = 0; index < elements.length; index++) {
-    if ((key === 'i' | key === 'index')) {
+    if ((key === "i") | (key === "index")) {
       const dummyElement = makeTag(index);
-     
-      if(operators[operator]('id', dummyElement, value)){
-        const deletedElement =  key === 'i' | key === 'index' ? elements[index] :  elements[value];
+
+      if (operators[operator]("id", dummyElement, value)) {
+        const deletedElement =
+          (key === "i") | (key === "index") ? elements[index] : elements[value];
         deletedElement.remove();
         result.push(deletedElement);
         continue;
@@ -1104,7 +1200,8 @@ function del(elements, constraints) {
       result.push(elements[index]);
       continue;
     }
-    const errorMsg = 'the selector and constraints you provided do not match any target'
+    const errorMsg =
+      "the selector and constraints you provided do not match any target";
     callRenderErrorLogger(errorMsg);
     console.log(errorMsg);
   }
@@ -1116,16 +1213,16 @@ function setAttribute(elements, constraints) {
   const [key, operator, value] = params;
 
   for (let i = 0; i < elements.length; i++) {
-    if (key === 'class') {
+    if (key === "class") {
       elements[i].classList[action](...value.split(" "));
-      continue
+      continue;
     }
-  
-    if(!value){
-      elements[i][key] = ' ';
-    } else if(operator === '+=' || operator === '-=') {
-      const foundOperator = operators[operator](key, elements[i], value)
-      elements[i][key] = (foundOperator) ? foundOperator: value;
+
+    if (!value) {
+      elements[i][key] = " ";
+    } else if (operator === "+=" || operator === "-=") {
+      const foundOperator = operators[operator](key, elements[i], value);
+      elements[i][key] = foundOperator ? foundOperator : value;
     } else {
       elements[i][key] = value;
     }
@@ -1134,26 +1231,36 @@ function setAttribute(elements, constraints) {
   return elements;
 }
 
-function makeTag (index) {
-  const div = document.createElement('div');
+function makeTag(index) {
+  const div = document.createElement("div");
   div.id = index;
   return div;
 }
 
-function filter(elements, constraints){
+function filter(elements, constraints) {
   const result = [];
   const [action, params] = constraints;
   let [key, operator, value] = params;
   let depth = 0;
 
-  while (depth < elements.length){
-    let element = (key === 'i' | key === 'index') ? makeTag(value) : elements[depth];
-    key = (key === 'i' | key === 'index') ? 'id' : key;
-    
-    const condition = key === 'class' ? operators[key]('contains', element, value) : operators[operator](key, element, value);
+  while (depth < elements.length) {
+    let element =
+      (key === "i") | (key === "index") ? makeTag(value) : elements[depth];
+    key = (key === "i") | (key === "index") ? "id" : key;
 
-    if( (action ==='filterIn' && condition) | (action ==='filterOut' && !condition)){
-      const filteredElement = (params[0] === 'i' | params[0] === 'index') ? elements[value] : elements[depth];
+    const condition =
+      key === "class"
+        ? operators[key]("contains", element, value)
+        : operators[operator](key, element, value);
+
+    if (
+      (action === "filterIn" && condition) |
+      (action === "filterOut" && !condition)
+    ) {
+      const filteredElement =
+        (params[0] === "i") | (params[0] === "index")
+          ? elements[value]
+          : elements[depth];
       result.push(filteredElement);
     }
     depth++;
@@ -1164,9 +1271,9 @@ function filter(elements, constraints){
 function sortElements(array, constraints) {
   const [action, params] = constraints;
   const [key, operator, order] = params;
-  const elements = [...array]
+  const elements = [...array];
   const parent = elements[0].parentNode;
-  let children = '';
+  let children = "";
   let depth = 0;
 
   const sortFunctions = {
@@ -1176,35 +1283,28 @@ function sortElements(array, constraints) {
     lengthSortDesc: (a, b) => b.textContent.length - a.textContent.length,
     alphabetAsc: (a, b) => a.textContent.localeCompare(b.textContent),
     alphabetDesc: (a, b) => b.textContent.localeCompare(a.textContent),
-    shuffle: () => Math.random() - 0.5
+    shuffle: () => Math.random() - 0.5,
   };
 
   let sortedElements = elements.sort(sortFunctions[order]);
 
-  while(depth < sortedElements.length){
+  while (depth < sortedElements.length) {
     children += sortedElements[depth].outerHTML;
-    depth++
+    depth++;
   }
 
   parent.innerHTML = children;
   return sortedElements;
 }
 
-function registerInternalUtils(){
-  globalThis['$render'] = $render;
-  globalThis['stringify'] = stringify;
-  globalThis['$trigger'] = $trigger;
-  globalThis['$select'] = $select;
-  globalThis['$purify'] = $purify;
+function registerInternalUtils() {
+  globalThis["$render"] = $render;
+  globalThis["stringify"] = stringify;
+  globalThis["$trigger"] = $trigger;
+  globalThis["$select"] = $select;
+  globalThis["$purify"] = $purify;
 }
 
 registerInternalUtils();
 
-export {
-  $render,
-  $select,
-  $trigger,
-  $register,
-  stringify,
-  $purify
-}
+export { $render, $select, $trigger, $register, stringify, $purify };
