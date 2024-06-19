@@ -179,10 +179,6 @@ function normalizePropPlaceholderAndUtilInTrigger(input) {
   });
 }
 
-function isObject(value) {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
 async function checkForJsQuirks(input, component) {
   input = isPromise(input) ? await input : input;
   if (input.includes("[object Object]")) {
@@ -319,7 +315,6 @@ function convertAttributesToProps(str) {
       matches[extractedContent[1]] = parsedJSON;
     }
   } catch (error) {
-    // If parsing fails due to a SyntaxError, handle the error here
     callRenderErrorLogger(error);
     console.error("Parsing Error:", error);
   }
@@ -390,10 +385,7 @@ function convertAttributes(str) {
  * @returns boolean
  */
 function isComponent(line) {
-  if (!isLine(CONSTANT.isFirstLetterCapped, line)) {
-    return false;
-  }
-  return true;
+  return isLine(CONSTANT.isFirstLetterCapped, line);
 }
 
 /**
@@ -1085,7 +1077,10 @@ function resolveMultipleAttributes(constraints) {
 }
 
 function $select(str, offSuperpowers = false) {
-  if (!isBrowser()) throw new Error("You cannot use $select on the server");
+  if (!isBrowser()) {
+    throw new Error("You cannot use $select on the server");
+  }
+
   if (typeof str !== "string" || str === "") {
     throw new Error("$select expects a string of selectors");
   }
