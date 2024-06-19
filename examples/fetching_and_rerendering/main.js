@@ -196,6 +196,7 @@ const images = [
     console.log('it works');
     return elements[0].volume = elements[1].value;
   }
+
   function AudioPlayer({images,audioUrl, play, pause, setVolume}) {
     return  `
       <audio src="${audioUrl}" id="myAudio"></audio>
@@ -239,35 +240,6 @@ function RenderErrorLogger({error}) {
   console.log('This is called by render internal');
   return '';
 }
-
-/* const Animal = (options = {returnData: false}) => {
-  function View(goats = []){
-    return `
-      <div id="animal" data-replace="#animal-list">
-        <h1 class="text-3xl">Animal list</h1>
-        <ul class="list" id="animal-list">
-          ${goats.results.map((goat) => {
-            return `
-              <li class="item">
-                <img src="${goat.picture.medium}">
-                <p class="name">${goat.name.first}</p>
-              </li>
-            `;
-          })}
-        </ul>
-        <button 
-          class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mb-5"
-          onClick="$render(Animal, '${stringify(options)}')">Load more animal...</button>
-      </div>
-    `;
-  }
-
-  const runModel = async (options) => {
-    const goats = await Users({returnData:true});
-    return options.returnData ? goats : $render(View, goats);
-  };
-  return runModel(options);
-}; */
 
 console.log($select('.post[0], .post[add|class=rubbish fade]'))
 console.log($select('.post:not(#e3)'))

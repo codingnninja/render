@@ -31,7 +31,7 @@
         "test": "jest",
         "build": "npm run clean && rollup -c",
         "dev": "npm run clean && rollup -c -w",
-        "browser-tests": "karma start karma.conf.cjs"
+        "test:browser": ""
     },
     "devDependencies": {
         "@babel/core": "^7.20.12",

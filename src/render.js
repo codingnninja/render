@@ -147,7 +147,7 @@ function reviver (key, value) {
       delete temporaryState[value]
       return revivedWeakMap;
     }
-    return value;
+    return value.trim();
   } else if (value && typeof value === 'object' && value.dataType === 'Map') {
     return new Map(value.value);
   } else if (value && typeof value === 'object' && value.dataType === 'Set') {
@@ -537,7 +537,7 @@ async function callComponent(element) {
   } catch (error) {
     const componentName = element.tagName;
     callRenderErrorLogger({error, component: componentName });
-    console.error(`${ error } in ${globalThis[element.tagName]}`);
+    console.error(`${ error } in ${globalThis[element.tagName] ? globalThis[element.tagName] : element.tagName}`);
   }
 };
 
@@ -1176,9 +1176,7 @@ function sortElements(array, constraints) {
     lengthSortDesc: (a, b) => b.textContent.length - a.textContent.length,
     alphabetAsc: (a, b) => a.textContent.localeCompare(b.textContent),
     alphabetDesc: (a, b) => b.textContent.localeCompare(a.textContent),
-    shuffle: () => Math.random() - 0.5,
-    dataAsc: (a, b) => (new Date(a.textContent) - new Date(b.textContent)),
-    dataDesc: (a, b) => (new Date(b.textContent) - new Date(a.textContent))
+    shuffle: () => Math.random() - 0.5
   };
 
   let sortedElements = elements.sort(sortFunctions[order]);
