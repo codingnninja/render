@@ -1,12 +1,34 @@
 let _$;
 
-const temporaryState = {};
-const password = "ASa21scy$!@uyh920skaYGSH34228";
+const renderIdentity = "_9s35Ufa7M67wghwT_";
+const STRING = "string";
+const NUMBER = "number";
+const FUNCTION = "function";
+const ZERO = 0;
+const ONE = 1;
+const BOOLEAN = "boolean";
+const SYMBOL = "symbol";
+const BIG_INT = "bigint";
+const UNDEFINED = undefined || "undefined";
 
+const CONSTANT = {
+  cap: "cap",
+  isFirstLetterCapped: "isFirstLetterCapped",
+  isComponentCloseTag: "isComponentCloseTag",
+  isNotTag: "isNotTag",
+};
+
+if (typeof document !== UNDEFINED ) {
+  _$ = document.querySelectorAll.bind(document);
+}
 function callRenderErrorLogger(error) {
   if (!globalThis["RenderErrorLogger"]) return false;
   const component = globalThis["RenderErrorLogger"];
   $render(component, { error });
+}
+
+function removeWhiteSpaceInOpeningTag(code) {
+  return code.replace(/<(\w+)\s+>/g, '<$1>')
 }
 
 function removeJsComments(code) {
@@ -15,143 +37,130 @@ function removeJsComments(code) {
 
 function sanitizeString(str) {
   return str
-    .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#x27;")
-    .replace(/\\r/g, "\r")
-    .replace(/\\n/g, "\n")
+    .replace(/\r/g, "\\r")
+    .replace(/\n/g, "\\n")
     .replace(/`/g, "&#96")
     .replace(/\//g, "&#x2F;");
 }
 
 function deSanitizeString(str) {
   const props = str
-    .replace(/&amp;/g, "&")
+    .replace(/\\$/g, "\\\\$")
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">")
     .replace(/&quot;/g, '"')
     .replace(/&#x27;/g, "'")
-    .replace(/\r/g, "\\r")
-    .replace(/\n/g, "\\n")
+    .replace(/\\r/g, "\r")
+    .replace(/\\n/g, "\n")
     .replace(/&#96/g, "`")
     .replace(/&#x2F;/g, "/");
   return props;
 }
 
-function insertSemicolons(code) {
-  return code
-    .split("\n")
-    .map((line) => {
-      line = line.trim();
-      if (
-        line &&
-        !line.endsWith(";") &&
-        !line.endsWith("{") &&
-        !line.endsWith("}") &&
-        !line.endsWith(":") &&
-        !line.endsWith(",")
-      ) {
-        line += ";";
+function spreadProps(props) {
+  let result = "";
+  const entries = Object.entries(props);
+  let depth = ZERO;
+  while (depth < entries.length) {
+    const [key, value] = entries[depth];
+    result += `${key}=${stringify(value)}`;
+    if (depth !== entries.length - ONE) {
+      result += " ";
+    }
+    depth++;
+  }
+  return result;
+}
+
+function normalizeNumberOrBoolean(paramValue) {
+  if (/^\d+$/.test(paramValue)) {
+    return Number(paramValue);
+  } else if (/^(true|false)$/.test(paramValue)) {
+    paramValue = paramValue === "true";
+    return paramValue;
+  }
+  return paramValue;
+}
+
+function splitAttributes(input) {
+  const pairs = [];
+  let attrName = "";
+  let attrValue = "";
+  let inQuotes = false;
+  let capturingValue = false;
+
+  for (let i = ZERO; i < input.length; i++) {
+    const char = input[i];
+
+    if (capturingValue) {
+      if (char === '"' || char === "'") {
+        inQuotes = !inQuotes;
+        attrValue += char;
+      } else if ((!inQuotes && char === " ") || i === input.length - ONE) {
+        if (i === input.length - ONE && char !== " ") {
+          attrValue += char;
+        }
+        pairs.push(`${attrName}=${attrValue}`);
+        attrName = "";
+        attrValue = "";
+        capturingValue = false;
+      } else {
+        attrValue += char;
       }
-      return line;
-    })
-    .join("\n");
-}
-
-function generateRandomString(limit) {
-  let randomString = "";
-  const chars =
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-
-  while (randomString.length < limit) {
-    randomString += chars.charAt(Math.floor(Math.random() * chars.length));
+    } else {
+      if (char === "=") {
+        capturingValue = true;
+      } else if (char !== " ") {
+        attrName += char;
+      }
+    }
   }
+  return pairs;
+} 
 
-  return randomString;
-}
+function parseProps(spreadedProps) {
+  const parsedProps = {};
+  const propsSplittingRegex =
+  /([\S]+=[`"']?_9s35Ufa7M67wghwT_([^]*?)_9s35Ufa7M67wghwT_[`"']?)/g;
+  const trimmedProps = spreadedProps.trim().slice(ZERO, -1);
+  let keyValuePairs = trimmedProps.match(propsSplittingRegex) ?? [];
+  const primitiveData = spreadedProps.replace(propsSplittingRegex, "") ?? [];
 
-function replacer(key, value) {
-  if (value === undefined) {
-    return "__undefined__";
-  } else if (value instanceof WeakMap) {
-    const randomId = generateRandomString(10);
-    const placeholder = `__WeakMap__${randomId}`;
-    temporaryState[placeholder] = value;
-    globalThis[password] = temporaryState;
-    return placeholder;
-  } else if (value instanceof WeakSet) {
-    const randomId = generateRandomString(10);
-    const placeholder = `__WeakSet__${randomId}`;
-    temporaryState[placeholder] = value;
-    globalThis[password] = temporaryState;
-    return placeholder;
-  } else if (typeof value === "bigint") {
-    return `__BigInt__${value.toString()}`;
-  } else if (value instanceof Date) {
-    return `__Date__${value.toISOString()}`;
-  } else if (value instanceof RegExp) {
-    return `__RegExp__${value.toString()}`;
-  } else if (typeof value === "function") {
-    const sanitizedString = sanitizeString(
-      removeBreakLine(removeJsComments(insertSemicolons(value.toString())))
+  keyValuePairs = [...keyValuePairs, ...splitAttributes(primitiveData)];
+  let depth = 0;
+
+  while(depth < keyValuePairs.length){
+    const pair = keyValuePairs[depth];
+    let splitParam = pair.includes(renderIdentity) ? `=${renderIdentity}` : "=";
+
+    if (
+      pair.includes('="' + renderIdentity) ||
+      pair.includes("='" + renderIdentity)
+    ) {
+      splitParam = pair.includes('="' + renderIdentity)
+        ? `="${renderIdentity}`
+        : `='${renderIdentity}`;
+    }
+
+    let [key, value] = pair.split(splitParam);
+    value = value.split(renderIdentity);
+    parsedProps[key] = normalizeNumberOrBoolean(
+      $purify(preprocessFunction(value[ZERO]))
     );
-    return `__function__${sanitizedString}`;
-  } else if (typeof value === "symbol") {
-    return `__symbol__${String(value)}`;
-  } else if (value instanceof Map) {
-    return {
-      dataType: "Map",
-      value: Array.from(value.entries()),
-    };
-  } else if (value instanceof Set) {
-    return {
-      dataType: "Set",
-      value: Array.from(value),
-    };
-  } else {
-    return value;
+    depth++;
   }
+  return parsedProps;
 }
 
-function reviver(key, value) {
-  if (typeof value === "string") {
-    if (value === "__undefined__") return undefined;
-    if (value.startsWith("__Date__")) return new Date(value.slice(8));
-    if (value.startsWith("__BigInt__")) return BigInt(value.slice(10));
-    if (value.startsWith("__symbol__")) return Symbol.for(value.slice(17, -1));
-    if (value.startsWith("__function__")) {
-      const deSanitizedString = deSanitizeString(
-        normalizeHTML(value.slice(12))
-      );
-      return new Function(`return ${deSanitizedString}`)();
-    }
-    if (value.startsWith("__RegExp__")) {
-      const match = value.slice(10).match(/\/(.*?)\/([gimsuy]*)$/);
-      return new RegExp(match[1], match[2]);
-    }
-    if (value.startsWith("__WeakSet__")) {
-      const temporaryState = globalThis[password];
-      const revivedWeakSet = temporaryState[value];
-      delete temporaryState[value];
-      return revivedWeakSet;
-    }
-
-    if (value.startsWith("__WeakMap__")) {
-      const temporaryState = globalThis[password];
-      const revivedWeakMap = temporaryState[value];
-      delete temporaryState[value];
-      return revivedWeakMap;
-    }
-    return value;
-  } else if (value && typeof value === "object" && value.dataType === "Map") {
-    return new Map(value.value);
-  } else if (value && typeof value === "object" && value.dataType === "Set") {
-    return new Set(value.value);
-  } else {
-    return value;
-  }
+function preprocessFunction(prop) {
+  if (!prop.startsWith("__function__:")) return prop;
+  prop = normailzeQuotesInFunctionString(prop);
+  const normalizedString = normalizeHTML(removeComment(prop.slice(13)));
+  return new Function(`return ${normalizedString}`)();
 }
 
 function formatKeyValuePairs(input) {
@@ -160,23 +169,18 @@ function formatKeyValuePairs(input) {
   });
 }
 
-function normalizePropPlaceholderAndUtilInTrigger(input) {
-  const regex =
-    /\s*\$trigger\s*\(\s*([^,]+)\s*(?:,\s*([^,]+)\s*)?(?:,\s*{\s*([^{}$]+)\s*}\s*)?\s*\)/g;
-
-  return input.replace(regex, (_, arg1, arg2, value) => {
-    const updatedArg1 = arg1.startsWith("{") ? `$${arg1}` : arg1;
-    if (arg2 === undefined) {
-      return "$trigger(" + updatedArg1 + ")";
+function convertEventHandler(input) {
+  const regex = /(\w+)=["']?(\{|\$\{)\s*?([\w.]+)\(([\s\S]*?)\)\s*?\}["']?/g;
+  const replaceFunction = (match, event, p1, functionName, args) => {
+    if (match.includes("${stringify")) {
+      return match;
     }
-
-    if (value === undefined) {
-      return "$trigger(" + updatedArg1 + "," + arg2 + ")";
+    if (functionName.includes("console.log")) {
+      return `${event}="${functionName}(${args})"`;
     }
-    return (
-      "$trigger(" + updatedArg1 + "," + arg2 + ",'${stringify(" + value + ")}')"
-    );
-  });
+    return `${event}="\${$trigger(${functionName}, ${args})}"`;
+  };
+  return input.replace(regex, replaceFunction);
 }
 
 async function checkForJsQuirks(input, component) {
@@ -187,12 +191,12 @@ async function checkForJsQuirks(input, component) {
   }
 
   if (input.includes("NaN")) {
-    const errorMsg = `NaN is found in ${component}`;
+    const errorMsg = `NaN is found. This component probably expects an object or array of object as props or you use falsy props in ${component}.`;
     callRenderErrorLogger(errorMsg);
   }
 
-  if (input.includes("undefined") | input.includes("null")) {
-    const errorMsg = `undefined or null is found ${component}. Check this component for correction.`;
+  if (input.includes(UNDEFINED ) || input.includes("null")) {
+    const errorMsg = `undefined or null is found. This component probably expects an object or array of object as props or you use falsy props in ${component}.`;
 
     callRenderErrorLogger(errorMsg);
   }
@@ -200,15 +204,8 @@ async function checkForJsQuirks(input, component) {
 }
 
 function isPromise(value) {
-  return Boolean(value && typeof value.then === "function");
+  return Boolean(value && typeof value.then === FUNCTION);
 }
-
-const CONSTANT = {
-  cap: "cap",
-  isFirstLetterCapped: "isFirstLetterCapped",
-  isComponentCloseTag: "isComponentCloseTag",
-  isNotTag: "isNotTag",
-};
 
 /**
  * remove script tag
@@ -244,7 +241,7 @@ function removeComment(str) {
  * @returns {string | * | void}
  */
 function removeBreakLine(str) {
-  return str.replace(/[\r\n\t]/g, "");
+  return str.replace(/[\t\b\n\r]/g, "");
 }
 
 /**
@@ -257,26 +254,27 @@ function getBodyIfHave(str) {
   if (!match) {
     return str;
   }
-  return match[1];
+  return match[ONE];
 }
 
+let patterns = {
+  anyNode: /(<[^<>]+>)/,
+  cap: /[A-Z]/,
+  self: /<([^\s<>]+) ?([^<>]*) \/>/,
+  close: /<\/([^\s<>]+)>/,
+  start: /<([^\s<>]+) ?([^<>]*)>/,
+  text: /<(?:\/?[A-Za-z]+\b[^>]*>|!--.*?--)>/,
+  isFirstLetterCapped: /<([A-Z][A-Za-z0-9]*)/,
+  isComponentCloseTag: /<\/[A-Z][A-Za-z0-9]*>/,
+  isNotTag: /^(?!<\w+\/?>$).+$/,
+};
 /**
  * Tag regex matchers
  * @param str
  * @returns {Boolean}
  */
 function isLine(property, line) {
-  let patterns = {
-    cap: /[A-Z]/.test(line),
-    self: /<([^\s<>]+) ?([^<>]*)\/>/.test(line),
-    close: /<\/([^\s<>]+)>/.test(line),
-    start: /<([^\s<>]+) ?([^<>]*)>/.test(line),
-    text: /<(?:\/?[A-Za-z]+\b[^>]*>|!--.*?--)>/.test(line),
-    isFirstLetterCapped: /<([A-Z][A-Za-z0-9]*)/.test(line),
-    isComponentCloseTag: /<\/[A-Z][A-Za-z0-9]*>/.test(line),
-    isNotTag: /^(?!<\w+\/?>$).+$/.test(line),
-  };
-  return patterns[property];
+  return patterns[property].test(line);
 }
 
 /**
@@ -293,93 +291,6 @@ const NODE_TYPE = {
 };
 
 /**
- * converts attributes to props
- * @param str
- * Todo: This should be made better with a proper parsing
- * @returns {{}}
- */
-function convertAttributesToProps(str) {
-  const regexToMatchProps =
-    /([\S]+=([`"']?)(_9s35Ufa7M67wghwT_([^]*?)_9s35Ufa7M67wghwT_)\1)/g;
-  const matches = {};
-  let match;
-
-  try {
-    while ((match = regexToMatchProps.exec(str)) !== null) {
-      const extractedContent = match[1].match(/([^=]+)=([^]*)/);
-      const value = extractedContent[2].match(
-        /([`"']?)(_9s35Ufa7M67wghwT_([^]*?)_9s35Ufa7M67wghwT_)\1/
-      );
-
-      const parsedJSON = JSON.parse(value[3], reviver);
-      matches[extractedContent[1]] = parsedJSON;
-    }
-  } catch (error) {
-    callRenderErrorLogger(error);
-    console.error("Parsing Error:", error);
-  }
-  return matches;
-}
-
-/**
- * make sure strings in boolean or number nature are converted to boolean or number
- * @param str
- * @returns {{}}
- */
-
-function normalizeNumberOrBoolean(paramValue) {
-  if (/^\d+$/.test(paramValue)) {
-    return Number(paramValue);
-  } else if (/^(true|false)$/.test(paramValue)) {
-    paramValue = paramValue === "true";
-    return paramValue;
-  }
-  return paramValue;
-}
-
-/**
- * handle attribute
- * @param str
- * @returns {{}}
- */
-function convertAttributes(str) {
-  if (!str) {
-    return {};
-  }
-  const extractedNonStructuredDataType = {};
-  const extractedObjectAndArray = convertAttributesToProps(str);
-  const regexToMatchProps =
-    /([\S]+=([`"']?)(_9s35Ufa7M67wghwT_([^]*?)_9s35Ufa7M67wghwT_)\1)/g;
-  const _str = str.replace(regexToMatchProps, " ");
-  const arr = _str
-    .replace(/[\s]+/g, " ")
-    .trim()
-    .match(/([\S]+="[^"]*")|([^\s"]+)/g);
-
-  arr.forEach((item) => {
-    if (item.indexOf("=") === -1) {
-      if (item === "/") {
-        return;
-      }
-      extractedNonStructuredDataType[item] = true;
-    } else {
-      //just split first =
-      const match = item.match(/([^=]+)=([^]*)/);
-      // remove string ""
-      let paramValue = match[2] && match[2].replace(/^"([^]*)"$/, "$1");
-      extractedNonStructuredDataType[match[1]] =
-        normalizeNumberOrBoolean(paramValue);
-    }
-  });
-  const props = {
-    ...extractedObjectAndArray,
-    ...extractedNonStructuredDataType,
-  };
-
-  return props;
-}
-
-/**
  * check for component
  * @param str
  * @returns boolean
@@ -394,38 +305,9 @@ function isComponent(line) {
  * @returns {string | * | void}
  */
 function normalizeHTML(str) {
-  return correctBracket(getBodyIfHave(removeComment(removeScript(str))));
-}
-
-async function parseChildrenComponents(extensibleStr, currentElement) {
-  const line = currentElement;
-  const regularMatch = line.match(/<([^\s<>]+) ?([^<>]*)>/);
-  const selfClosingMatch = line.match(/<([^\s<>]+) ?([^<>]*)\/>/);
-
-  const node = regularMatch ? regularMatch : selfClosingMatch;
-  const dependencies = {
-    tagName: node[1],
-    props: convertAttributes(deSanitizeString(node[2])),
-    children: selfClosingMatch ? "" : "__placeholder",
-  };
-
-  try {
-    let calledComponent = await callComponent(dependencies);
-    const component = normalizeHTML(
-      sanitizeOpeningTagAttributes(calledComponent)
-    );
-
-    const indexOfCurrentElement = extensibleStr.indexOf(currentElement);
-    const result = component.split(/(<[^<>]+>)/);
-
-    if (indexOfCurrentElement !== -1) {
-      extensibleStr.splice(indexOfCurrentElement, 1, ...result);
-      return extensibleStr;
-    }
-  } catch (error) {
-    callRenderErrorLogger(error);
-    console.error(error);
-  }
+  return correctBracket(
+    getBodyIfHave(removeBreakLine(removeComment(removeScript(removeWhiteSpaceInOpeningTag(str)))))
+  );
 }
 
 /**
@@ -436,21 +318,23 @@ async function parseChildrenComponents(extensibleStr, currentElement) {
 
 function convertStackOfHTMLToString(stack) {
   let html = ``;
-  if (stack.length > 0) {
-    stack.forEach((node, index) => {
+  if (stack.length > ZERO) {
+    let index = 0;//depth
+    while(index < stack.length){
       // text node
+      const node = stack[index];
       const trimmedNode = node.trim();
       if (isLine(NODE_TYPE.close, node)) {
         if (isLine(CONSTANT.isComponentCloseTag, trimmedNode)) {
           html += "</div>";
         } else if (
           !isLine(CONSTANT.isFirstLetterCapped, trimmedNode) &&
-          stack[index - 1] === "__placeholder"
+          stack[index - ONE] === "__placeholder"
         ) {
           html += "";
         } else if (
           !isLine(CONSTANT.isFirstLetterCapped, trimmedNode) &&
-          stack[index - 1].trim() !== "__placeholder"
+          stack[index - ONE].trim() !== "__placeholder"
         ) {
           html += trimmedNode;
         }
@@ -465,7 +349,8 @@ function convertStackOfHTMLToString(stack) {
       ) {
         html += trimmedNode;
       }
-    });
+      index++;
+    }
   }
   return html;
 }
@@ -476,18 +361,17 @@ function convertStackOfHTMLToString(stack) {
  * @returns {*}
  */
 async function parseComponent(str) {
-  //open tag matching pattern
-  const pattern = /(<[^<>]+>)/;
   if (!str) {
     return null;
   }
 
   try {
-    let extensibleStr = str.split(pattern);
+    let extensibleStr = str.split(patterns.anyNode);
     const stack = [];
     let depth = 0;
     while (extensibleStr.length > depth) {
       const currentElement = extensibleStr[depth].trim();
+
       if (currentElement === "") {
         depth++;
         continue;
@@ -509,6 +393,35 @@ async function parseComponent(str) {
   }
 }
 
+async function parseChildrenComponents(extensibleStr, currentElement) {
+  const line = currentElement;
+  const regularMatch = line.match(patterns.start);
+  const selfClosingMatch = line.match(patterns.self);
+  const node = regularMatch ? regularMatch : selfClosingMatch;
+ 
+  const dependencies = {
+    tagName: node[ONE],
+    props: parseProps(deSanitizeString(node[2])),
+    children: selfClosingMatch ? "" : "__placeholder",
+  };
+
+  try {
+    let calledComponent = await callComponent(dependencies);
+    const component = normalizeHTML(
+      sanitizeOpeningTagAttributes(calledComponent)
+    );
+    const indexOfCurrentElement = extensibleStr.indexOf(currentElement);
+    const result = component.split(patterns.anyNode);
+    if (indexOfCurrentElement !== -1) {
+      extensibleStr.splice(indexOfCurrentElement, ONE, ...result);
+      return extensibleStr;
+    }
+  } catch (error) {
+    callRenderErrorLogger(error);
+    console.error(error);
+  }
+}
+
 /**
  * Call a component with or without props
  * @param str
@@ -520,15 +433,10 @@ async function callComponent(element) {
     const children = element.children;
     let props = element.props;
 
-    if (Object.keys(props).length === 0 && !element.children) {
+    if (Object.keys(props).length === ZERO && !element.children) {
       return checkForJsQuirks(component(), component);
     } else {
-      /*  if(isObject(props) && 
-         isObject(props[Object.keys(props)[0]]) &&
-         Object.keys(props).length === 1){
-          props = props[Object.keys(props)[0]];
-      } */
-
+     
       if (element.children) {
         props.children = children;
       }
@@ -558,8 +466,8 @@ async function callComponent(element) {
  * @constructor
  */
 async function processJSX(str) {
-  let _str = str || "";
   try {
+    let _str = sanitizeOpeningTagAttributes(str) || "";
     _str = normalizeHTML(_str);
     const a = await parseComponent(_str);
     return a;
@@ -569,34 +477,30 @@ async function processJSX(str) {
   }
 }
 
-if (typeof document !== "undefined") {
-  _$ = document.querySelectorAll.bind(document);
-}
 /**
  * @desc Checking rendering environment
  * @param void
  * @returns boolean
  */
 const isBrowser = (_) => {
-  // Check if the environment is Node.js
-  if (typeof process === "object" && typeof require === "function") {
+  if (typeof process === "object" && typeof require === FUNCTION) {
     return false;
   }
-  // Check if the environment is a
-  // Service worker
-  if (typeof importScripts === "function") {
+  
+  if (typeof importScripts === FUNCTION) {
     return false;
   }
-  // Check if the environment is a Browser
+
   if (typeof globalThis === "object") {
     return true;
   }
 };
+
 function isInitialLetterUppercase(func, context) {
-  if (typeof func !== "function") {
+  if (typeof func !== FUNCTION) {
     throw `Use ${context}(functionName, arg) instead of ${context}(funcationName(arg)) or the first argument you provided is a function.`;
   }
-  const initialLetter = func.name.charAt(0);
+  const initialLetter = func.name.charAt(ZERO);
   return initialLetter === initialLetter.toUpperCase();
 }
 
@@ -612,9 +516,8 @@ async function $render(component, props) {
   }
 
   const updatedComponent = makeFunctionFromString(component.toString());
-
   try {
-    if (isBrowser() && typeof document !== "undefined") {
+    if (isBrowser() && typeof document !== UNDEFINED ) {
       let renderedApp;
       if (document.readyState === "complete") {
         executeFallback(updatedComponent.toString());
@@ -648,18 +551,16 @@ async function $render(component, props) {
  * @return
  */
 async function resolveComponent(component, arg) {
-  const props = typeof arg === "function" ? arg : $purify(arg);
+  const props = typeof arg === FUNCTION ? arg : $purify(arg, component);
   let resolvedComponent = arg ? component(props) : component();
-
   if (isPromise(resolvedComponent)) {
     const result = await resolvedComponent;
     return result;
   }
 
-  if (typeof resolvedComponent !== "string") {
+  if (typeof resolvedComponent !== STRING) {
     throw "A component must return a string";
   }
-
   return checkForJsQuirks(resolvedComponent, component);
 }
 function isFetcher(parsedComponent) {
@@ -683,12 +584,12 @@ function extractFetcherAttributes(functionString) {
   const matchedComponent = componentMatcher.exec(functionString);
 
   matchedFallback
-    ? (fetcherAttributes[matchedFallback[1]] = matchedFallback[2])
+    ? (fetcherAttributes[matchedFallback[ONE]] = matchedFallback[2])
     : (fetcherAttributes["data-fallback"] = matchedFallback);
   matchedComponent
     ? (fetcherAttributes["componentId"] = matchedComponent[2])
     : (fetcherAttributes["componentId"] = matchedComponent);
-  fetcherAttributes["action"] = matchedComponent ? matchedComponent[1] : null;
+  fetcherAttributes["action"] = matchedComponent ? matchedComponent[ONE] : null;
 
   return fetcherAttributes;
 }
@@ -739,11 +640,14 @@ function removeFallback(target) {
 function insertElementsIntoParent(parent, elements, parseComponent) {
   if (parent && elements && isBrowser()) {
     const fragment = document.createDocumentFragment();
-    elements.forEach((element) => {
+    let depth = 0;
+    while(depth < elements.length){
+      const element = elements[depth];
       if (element instanceof Node) {
         fragment.appendChild(element);
       }
-    });
+      depth++
+    }
 
     if (parseComponent.dataset.append) {
       parent.appendChild(fragment);
@@ -786,7 +690,7 @@ function deSanitizeOpeningTagAttributes(tag) {
     tag.replace(regex, (match, attributeName, attributeValue) => {
       const sanitizedValue = attributeValue
         .replace(/&lt;/g, "<")
-        .replace(/&gt;/g, ">");
+        .replace(/&gt;/g, ">")
       return `${attributeName}=${sanitizedValue}`;
     })
   );
@@ -854,17 +758,50 @@ function makeFunctionFromString(functionString) {
   return Function(`return ${replaceValueWithStringify(functionString)}`)();
 }
 
+function normailzeQuotesInFunctionString(funcStr) {
+  return funcStr
+    .replace(/"(\w+)"\s*:/g, "'$1':")
+    .replace(/:\s*"([^"]*)"/g, ": `$1`")
+    .replace(/"/g, "`");
+}
+
+function replaceSpreadPropsInTags(input) {
+  const tagRegex = /<([a-zA-Z_$][\w\-]*)\s*([^>]*)>/g;
+  return input.replace(tagRegex, (match, tagName, attributes) => {
+    try {
+      const newAttributes = replaceSpreadPropsInAttributes(attributes);
+      return `<${tagName} ${newAttributes}>`;
+    } catch (error) {
+      throw new Error(`Error processing tag <${tagName}>: ${error.message}`);
+    }
+  });
+}
+
+function replaceSpreadPropsInAttributes(attributes) {
+  const spreadRegex = /\{\.{3}([a-zA-Z_$][0-9a-zA-Z_$]*)\}/g;
+  return attributes.replace(spreadRegex, (spreadMatch, variable) => {
+    if (spreadMatch.includes("...")) {
+      return `\${spreadProps(${variable})}`;
+    }
+  });
+}
+
 function replaceValueWithStringify(functionString) {
   let func = formatKeyValuePairs(functionString);
+  func = convertEventHandler(func);
   func = func.replace(
-    /(\w+)=["']?\{([^'$][^{}]+)\}["']?/g,
+    //matches attribue and {values}
+    /(\w+)=["']?\$?\{([^'$][^{}]+)\}["']?/g,
     (match, key, value) => {
+      if (match.includes("{{")) {
+        return key + "=" + "${stringify(" + value + "})}";
+      }
       return key + "=" + "${stringify(" + value + ")}";
     }
   );
 
   func = func.replace(
-    /(\w+)="\s*\$render\s*\(([^{}]+)\,\s*\{\s*([^{}]+)\s*\}\s*\)\s*"/g,
+    /(\w+)="*\$render\s*\(\s*([^{}]+)\s*\,\s*\$?\{([\s\S]*?)\}\s*\)"/g,
     (match, key, component, prop) => {
       return (
         key +
@@ -879,7 +816,7 @@ function replaceValueWithStringify(functionString) {
       );
     }
   );
-  return normalizePropPlaceholderAndUtilInTrigger(func);
+  return replaceSpreadPropsInTags(func);
 }
 
 /**
@@ -889,11 +826,11 @@ function replaceValueWithStringify(functionString) {
  */
 function $register(...args) {
   const components = [...args];
-  let depth = 0;
+  let depth = ZERO ;
 
   while (components.length > depth) {
     const component = components[depth];
-    if (typeof component !== "function") {
+    if (typeof component !== FUNCTION) {
       throw "Only function is expected";
     }
     globalThis[component.name] = makeFunctionFromString(component.toString());
@@ -902,41 +839,49 @@ function $register(...args) {
   return globalThis;
 }
 
-function callFunctionWithElementsAndData(func, anchors, data) {
-  if (typeof func === "function") {
-    if (!anchors && !data) {
-      return func();
+function isNativeCode(fn) {
+  return (
+    typeof fn === FUNCTION && /\{\s*\[native code\]\s*\}/.test(fn.toString())
+  );
+}
+
+function callFunctionWithElementsAndData(func, data) {
+  if (typeof func === FUNCTION) {
+    const funca = isNativeCode(func)
+      ? func
+      : new Function(`return ${normailzeQuotesInFunctionString(removeBreakLine(func.toString()))}`)();
+
+    let cleanedData;
+    if (!data) {
+      cleanedData = data;
+    } else {
+      cleanedData =
+        typeof data === STRING
+          ? stringify(normalizeHTML(data))
+          : stringify(data);
     }
 
-    if (!anchors && data) {
-      return func($purify(data));
-    }
+    const restructuredFunction = !cleanedData
+      ? `(${funca})()`
+      : `(${funca})($purify('${cleanedData}', '${func.name ?? func}'))`;
 
-    const elements = typeof anchors !== "string" ? anchors : $select(anchors);
-
-    const result = !data ? func(elements) : func(elements, $purify(data));
-    return result;
+      return isNativeCode(funca)
+      ? `${funca.name ?? func}($purify('${cleanedData}'))`
+      : restructuredFunction;
   }
 
   throw `There is an error in ${
     func.name ?? func
   } or the first argument passed to $trigger is not a function`;
 }
-function $trigger(func, anchors, data) {
+
+function $trigger(func, data) {
   if (!isBrowser()) {
     throw "You cannot use $trigger on the server";
   }
-
   try {
-    if (isBrowser() && typeof document !== "undefined") {
-      if (document.readyState === "complete") {
-        return callFunctionWithElementsAndData(func, anchors, data);
-      } else {
-        window.addEventListener("load", () => {
-          return callFunctionWithElementsAndData(func, anchors, data);
-        });
-      }
-    }
+    let result = isBrowser() && callFunctionWithElementsAndData(func, data);
+    return result;
   } catch (error) {
     callRenderErrorLogger(error);
     console.error(
@@ -954,77 +899,211 @@ function useRoot(component) {
   $el("root").innerHTML = component;
 }
 
-function stringify(props) {
+const isCyclic = (input) => {
+  const seen = new Set();
+
+  const dfsHelper = (obj) => {
+    if (typeof obj !== "object" || obj === null) return false;
+    seen.add(obj);
+    return Object.values(obj).some(
+      (value) => seen.has(value) || dfsHelper(value)
+    );
+  };
+
+  return dfsHelper(input);
+};
+
+function escapeString(str) {
+  return str
+    .replace(/(?<!\\\\)[$^&]/g,"\\$&")
+    .replace(/\\/g, "\\\\")
+    .replace(/"/g, '\\"')
+    .replace(/\b/g, "")
+    .replace(/\f/g, "\\f")
+    .replace(/\n/g, "\\n")
+    .replace(/\r/g, "\\r")
+    .replace(/\t/g, "\\t");
+}
+
+const getType = (value) => {
+  return Object.prototype.toString.call(value).slice(8, -1);
+};
+
+function banList(value) {
+  let banned = false;
+  if (value instanceof Date) {
+    banned = true;
+  } else if (value instanceof Map) {
+    banned = true;
+  } else if (value instanceof Set) {
+    banned = true;
+  } else if (value instanceof WeakMap) {
+    banned = true;
+  } else if (value instanceof WeakSet) {
+    banned = true;
+  } else if (typeof value === SYMBOL) {
+    banned = true;
+  } else if (value instanceof RegExp) {
+    banned = true;
+  } else if (typeof value === BIG_INT) {
+    banned = true;
+  }
+  return banned;
+}
+function jsonStringify(data) {
+  if(banList(data)){
+    throw new Error(`${getType(
+      data
+    )} is not allowed as a prop. Wrap it in a function instead.`);
+  }
+  const quotes = '"';
+
+  if (isCyclic(data)) {
+    throw new TypeError("props={props} or props=${props} is not allowed. Use {...props} instead");
+  }
+
+  if (typeof data === BIG_INT) {
+    throw new TypeError(
+      "BigInt is not expected to be used as a prop. Wrap it in a function instead."
+    );
+  }
+
+  if (data === null) {
+    return "null";
+  }
+
+  const type = typeof data;
+
+  if (type === NUMBER) {
+    if (Number.isNaN(data) || !Number.isFinite(data)) {
+      return "null";
+    }
+    return String(data);
+  }
+
+  if (type === BOOLEAN) return String(data);
+
+  if (type === FUNCTION) {
+    const sanitizedString = normalizeHTML(removeJsComments(data.toString()));
+
+    return `__function__:${sanitizedString}`;
+  }
+
+  if (type === UNDEFINED ) {
+    return undefined;
+  }
+
+  if (type === STRING) {
+    return quotes + escapeString(data) + quotes;
+  }
+
+  if (typeof data.toJSON === FUNCTION) {
+    return jsonStringify(data.toJSON());
+  }
+
+  if (Array.isArray(data)) {
+    let result = "[";
+    let first = true;
+    for (let i = ZERO; i < data.length; i++) {
+      if (!first) {
+        result += ",";
+      }
+      result += jsonStringify(data[i]);
+      first = false;
+    }
+    result += "]";
+    return result;
+  }
+
+  let result = "{";
+  let first = true;
+  const entries = Object.entries(data);
+  let i = ZERO;
+  while (i < entries.length) {
+    const [key, value] = entries[i];
+    banList(value);
+
+    if (typeof value === FUNCTION) {
+      console.error(
+        "functions are not expected in an object, for example, use <Home userImage={image} userAction={play} /> instead of <Home user={{image, play}} />"
+      );
+    }
+
+    if (
+      typeof key !== SYMBOL &&
+      value !== UNDEFINED  &&
+      typeof value !== FUNCTION &&
+      typeof value !== SYMBOL
+    ) {
+      if (!first) {
+        result += ",";
+      }
+      result += quotes + key + quotes + ":" + jsonStringify(value);
+      first = false;
+    }
+    i++;
+  }
+  result += "}";
+  return result;
+}
+
+const allowedData = {
+  Array: "Array",
+  Function: "Function",
+  Object: "Object",
+};
+
+function isAllowed(data) {
+   if(banList(data)) {
+    throw new Error("You're not allowed to use reserved ID (_9s35Ufa7M67wghwT_) in data");
+  }
+  return allowedData[getType(data)] ? true : false;
+}
+
+function stringify(prop) {
   try {
     if (
-      typeof props === "string" &&
-      props.includes("NaN") |
-        props.includes("[object Object]") |
-        props.includes("undefined")
+      typeof prop === STRING &&
+      prop.includes("NaN") |
+        prop.includes("[object Object]") |
+        prop.includes(UNDEFINED)
     ) {
-      return "";
+      return "null";
     }
 
-    const data = JSON.stringify(props, replacer);
-    const sanitizedString = sanitizeString(data);
-    return `_9s35Ufa7M67wghwT_${sanitizedString}_9s35Ufa7M67wghwT_`;
+    if (!isAllowed(prop)) {
+      return sanitizeString(String(prop));
+    }
+    const stringifyProp = jsonStringify(prop);
+    return `${renderIdentity}${sanitizeString(stringifyProp)}${renderIdentity}`;
   } catch (error) {
     callRenderErrorLogger(error);
     console.error(error);
   }
 }
 
-function convertToPropSystem(str) {
-  const regex = /([`"']?)(_9s35Ufa7M67wghwT_([^]*?)_9s35Ufa7M67wghwT_)\1/g;
-  let match = regex.exec(str);
-  if (match) {
-    try {
-      if (
-        match[3].includes('"null"') |
-        match[3].includes('"[object Object]"') |
-        match[3].includes('"NaN"')
-      ) {
-        callRenderErrorLogger({ error });
-        return "";
-      }
-      const parsedJSON = JSON.parse(match[3], reviver);
-      return parsedJSON;
-    } catch (error) {
-      callRenderErrorLogger(error);
-      console.error("Unexpected props:", error);
-    }
-  }
-  return JSON.parse(str, reviver);
-}
-
-function $purify(props) {
+function $purify(props, compnent) {
+  if (typeof props !== STRING) return props;
   try {
-    if (typeof props !== "string") {
-      return props;
-    } else if (typeof props === "string") {
-      const isCrude = /^(_9s35Ufa7M67wghwT_)/.test(props);
-      if (!isCrude && props !== "undefined") {
-        return props;
-      } else if (
-        props.includes("null") |
-        props.includes("undefined") |
-        props.includes("NaN") |
-        props.includes("[object Object]")
-      ) {
-        return "";
-      }
+    if (props.startsWith(renderIdentity)) {
+      props = props.slice(18, -18);
     }
-    return convertToPropSystem(deSanitizeString(props));
+    if(!props.includes('"', ZERO)){
+      props = '"'+ props +'"';
+    }
+    if(props.includes(renderIdentity)){ 
+      return ("You're not allowed to use reserved ID (_9s35Ufa7M67wghwT_) in data");
+    }
+    return normalizeNumberOrBoolean(JSON.parse(props));
   } catch (error) {
-    callRenderErrorLogger(error);
-    console.error(error);
+    callRenderErrorLogger({ error, compnent });
+    console.error(`${error} in ${compnent}`);
   }
 }
-
 function buildDataStructureFrom(queryString) {
   let [selector, constraints] = resolveActionAndConstraints(queryString);
 
-  if (constraints === undefined) {
+  if (constraints === UNDEFINED) {
     return [selector];
   }
 
@@ -1040,30 +1119,30 @@ function resolveActionAndConstraints(queryString) {
   const match = queryString.match(regex);
 
   if (match) {
-    return [match[1], match[2]];
+    return [match[ONE], match[2]];
   }
 
   if (!queryString.includes("|") || queryString.includes("|=")) {
-    return [queryString.trim(), undefined];
+    return [queryString.trim(), UNDEFINED];
   }
 
   const splittedQuery = queryString.split("[").filter(Boolean);
   if (splittedQuery.length === 2) {
-    const selector = splittedQuery[0].endsWith("]")
-      ? `[${splittedQuery[0]}`
-      : splittedQuery[0];
-    const constraints = splittedQuery[1].split("]")[0];
+    const selector = splittedQuery[ZERO].endsWith("]")
+      ? `[${splittedQuery[ZERO]}`
+      : splittedQuery[ZERO];
+    const constraints = splittedQuery[ONE].split("]")[ZERO];
     return [selector.trim(), constraints.trim()];
   }
 
-  const selector = `${splittedQuery[0]}[${splittedQuery[1]}`;
-  const constraints = splittedQuery[2].split("]")[0];
+  const selector = `${splittedQuery[ZERO]}[${splittedQuery[ONE]}`;
+  const constraints = splittedQuery[2].split("]")[ZERO];
   return [selector.trim(), constraints.trim()];
 }
 
 function resolveMultipleAttributes(constraints) {
   let processedConstraints = [];
-  let depth = 0;
+  let depth = ZERO;
   while (depth < constraints.length) {
     let splittedConstraints = constraints[depth].split("|").filter(Boolean);
     const [action, paramString] = splittedConstraints;
@@ -1081,14 +1160,14 @@ function $select(str, offSuperpowers = false) {
     throw new Error("You cannot use $select on the server");
   }
 
-  if (typeof str !== "string" || str === "") {
+  if (typeof str !== STRING || str === "") {
     throw new Error("$select expects a string of selectors");
   }
 
   try {
     const selectors = str.split(/,(?![^\[]*\])/);
     let elements = [];
-    let depth = 0;
+    let depth = ZERO;
 
     while (selectors.length > depth) {
       const selectorWithConstraints = selectors[depth];
@@ -1097,23 +1176,22 @@ function $select(str, offSuperpowers = false) {
       );
 
       const nestedElements = _$(selector);
-
       const modifiedElements = applyAction(nestedElements, constraints);
       const numberOfElementsSelected =
-        modifiedElements === undefined ? undefined : modifiedElements.length;
+        modifiedElements === UNDEFINED  ? UNDEFINED  : modifiedElements.length;
       if (numberOfElementsSelected && !offSuperpowers) {
         //turn grouped elements to a real array
         const iterableGroupedElements = [...modifiedElements];
         elements.push(iterableGroupedElements);
-      } else if (numberOfElementsSelected > 1 && offSuperpowers) {
+      } else if (numberOfElementsSelected > ONE && offSuperpowers) {
         elements.push(modifiedElements);
       } else {
         elements.push(modifiedElements);
       }
       depth++;
     }
-    if (elements[0].length === 0) return null;
-    return elements && elements.length === 1 ? elements[0] : elements;
+    if (elements[ZERO].length === ZERO) return null;
+    return elements && elements.length === ONE ? elements[ZERO] : elements;
   } catch (error) {
     callRenderErrorLogger(error);
     console.error(
@@ -1123,10 +1201,10 @@ function $select(str, offSuperpowers = false) {
 }
 
 function applyAction(elements, constraints) {
-  if (typeof constraints === "string" && elements.length !== 0)
+  if (typeof constraints === STRING && elements.length !== 0)
     return elements[constraints];
-  if (!constraints && elements.length === 1) return elements[0];
-  if (!constraints && elements.length > 1) return elements;
+  if (!constraints && elements.length === ONE) return elements[0];
+  if (!constraints && elements.length > ONE) return elements;
 
   let depth = 0;
   let result = elements;
@@ -1137,9 +1215,11 @@ function applyAction(elements, constraints) {
       result = del(result, constraints[depth]);
     } else if (action === "sort") {
       result = sortElements(result, constraints[depth]);
+    } else if (action === "search") {
+      result = search(result, constraints[depth])
     } else if (action.includes("filter")) {
       result = filter(result, constraints[depth]);
-    } else if (constraints !== undefined) {
+    } else if (constraints !== UNDEFINED) {
       result = setAttribute(result, constraints[depth]);
     }
     depth++;
@@ -1178,12 +1258,12 @@ function del(elements, constraints) {
   const result = [];
 
   for (let index = 0; index < elements.length; index++) {
-    if ((key === "i") | (key === "index")) {
+    if (key === "i" || key === "index") {
       const dummyElement = makeTag(index);
 
       if (operators[operator]("id", dummyElement, value)) {
         const deletedElement =
-          (key === "i") | (key === "index") ? elements[index] : elements[value];
+          key === "i" || key === "index" ? elements[index] : elements[value];
         deletedElement.remove();
         result.push(deletedElement);
         continue;
@@ -1200,7 +1280,7 @@ function del(elements, constraints) {
     callRenderErrorLogger(errorMsg);
     console.log(errorMsg);
   }
-  return result.length === 1 ? result[0] : result;
+  return result.length === ONE ? result[ZERO] : result;
 }
 
 function setAttribute(elements, constraints) {
@@ -1240,8 +1320,8 @@ function filter(elements, constraints) {
 
   while (depth < elements.length) {
     let element =
-      (key === "i") | (key === "index") ? makeTag(value) : elements[depth];
-    key = (key === "i") | (key === "index") ? "id" : key;
+      key === "i" || key === "index" ? makeTag(value) : elements[depth];
+    key = key === "i" || key === "index" ? "id" : key;
 
     const condition =
       key === "class"
@@ -1249,18 +1329,18 @@ function filter(elements, constraints) {
         : operators[operator](key, element, value);
 
     if (
-      (action === "filterIn" && condition) |
+      (action === "filterIn" && condition) ||
       (action === "filterOut" && !condition)
     ) {
       const filteredElement =
-        (params[0] === "i") | (params[0] === "index")
+        params[ZERO] === "i" || params[ZERO] === "index"
           ? elements[value]
           : elements[depth];
       result.push(filteredElement);
     }
     depth++;
   }
-  return result.length === 1 ? result[0] : result;
+  return result.length === ONE ? result[ZERO] : result;
 }
 
 function sortElements(array, constraints) {
@@ -1292,12 +1372,26 @@ function sortElements(array, constraints) {
   return sortedElements;
 }
 
+
+function search(elements, constraints){
+  const customParams = ['class', '=', 'hidden'];
+  const [action, params] = constraints;
+  setAttribute(elements, ["remove", customParams]);
+  if(params[2] === "*") return elements;
+  const filteringConstraint = ["filterOut", params];
+  const filteredElements = filter(elements, filteringConstraint);
+  if(filteredElements.length === 0) elements;
+  setAttribute(filteredElements, ["add", customParams]);
+  return filteredElements;
+}
+
 function registerInternalUtils() {
   globalThis["$render"] = $render;
   globalThis["stringify"] = stringify;
   globalThis["$trigger"] = $trigger;
   globalThis["$select"] = $select;
   globalThis["$purify"] = $purify;
+  globalThis["spreadProps"] = spreadProps;
 }
 
 registerInternalUtils();

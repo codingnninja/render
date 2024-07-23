@@ -8,7 +8,9 @@
       rel="stylesheet"
       href="https://cdn.jsdelivr.net/npm/tailwindcss/dist/tailwind.min.css"
     />
+    <link href="https://unpkg.com//prismjs@v1.x/themes/prism.css" rel="stylesheet" />
     <title>Document</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
       body {
         background-color: #f8f8f8;
@@ -38,11 +40,19 @@
         font-family: arial;
         padding: 10px 0;
       }
+      .hidden {
+        display: none;
+      }
     </style>
     <script type="module" src="main.js"></script>
   </head>
   <body>
     <div id="root"></div>
+    <input 
+      type="text" 
+      placeholder="filter"
+      onkeyup="$select(`.post[search|textContent=*${this.value}]`)"
+    >
     <div class="text">
       <div class="post" id="e2">abayomi</div>
       <div class="post yes" id="e3">aope</div>
@@ -80,6 +90,8 @@
     >
       what's on your mind
     </div>
+    <script src="https://unpkg.com/prismjs@v1.x/components/prism-core.min.js"></script>
+	<script src="https://unpkg.com/prismjs@v1.x/plugins/autoloader/prism-autoloader.min.js"></script>
   </body>
 </html>
 

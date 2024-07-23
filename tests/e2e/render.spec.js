@@ -44,7 +44,6 @@ describe('Render a component', function() {
 
     const props = { name: 'John' };
     await expect($render(anotherOne, props)).rejects.toThrow("A component must start with a capital letter");
-
   });
 
 });

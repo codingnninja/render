@@ -21,10 +21,10 @@ hero:
 features:
   - icon: ⚡️
     title: Ship fast & more
-    details: $render helps you ship fast by making hard features simple to implement. 
+    details: $render helps you ship fast by making hard features simple to implement.
   - icon: 🎀
     title: Stop burning money
-    details: It is designed to cut unnecessary operations that cost you more money. 
+    details: It is designed to cut unnecessary operations that cost you more money.
   - icon: ⚡️
     title: Scale with ease
     details: You don't need to worry about scaling as $render is simple to use and fun to scale.
@@ -39,7 +39,7 @@ features:
     details: No workaround is needed for basic SEO and accessibility. It just works.
   - icon: ⚡️
     title: Be stable and flexible
-    details: Build applications that give you peace of mind to sleep at night but easy to update. 
+    details: Build applications that give you peace of mind to sleep at night but easy to update.
   - icon: 🎉
     title: Easy integration
     details: It works seamlessly with Ruby, Laravel, Django and others. It works everywhere.
@@ -54,7 +54,7 @@ head:
       content: $render.jsx docs
   - - meta
     - property: og:image
-      content: 
+      content:
   - - meta
     - property: og:url
       content: https://vitejs.dev/blog/announcing-vite3
@@ -71,6 +71,7 @@ head:
 ---
 
 <!-- Custom home layout -->
+
 <div class="custom-layout">
   <h1>🏀</h1>
   <h1>Custom Layout</h1>
